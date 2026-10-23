@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>SayCard</title>
 <meta name="description" content="Dictate flashcards by voice and send them to Anki.">
-<meta name="theme-color" content="#24324a">
+<meta name="theme-color" content="#1f6fe5">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -15,327 +15,513 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
 <style>
-/* Layout: one narrow column. An index card (red top rule, blue ruled lines) is the composer; the stack of saved cards sits below it. */
+/* SayCard — dictation-first layout.
+   Desktop: card creator (left, ~2/3) and card library + Send to Anki (right, ~1/3); the page is the only scroller.
+   Tablet / phone: one column, creator first, a sticky dictation bar (mic · Flip · Save), library and export fold away. */
 :root {
-  --bg: #eef1f5;
-  --surface: #ffffff;
-  --ink: #1d2433;
-  --muted: #5b6577;
-  --line: #d6dce6;
-  --card: #fffefb;
-  --rule-red: #d9534f;
-  --rule-blue: #dbe6f4;
-  --accent: #24324a;
-  --accent-ink: #ffffff;
-  --live: #c8372d;
-  --ok: #2f7d4f;
-  --chip: #e6ebf2;
-  --focus: #3b74c4;
+  --bg: #f3f5f9; --surface: #ffffff; --ink: #14213d; --muted: #5b6577; --line: #e1e6ee; --line2: #cfd7e3;
+  --primary: #1f6fe5; --primary-hover: #185ccc; --primary-ink: #ffffff; --primary-soft: #eef5ff; --primary-line: #8db7f7;
+  --live: #e5484d; --live-soft: #fdecec; --ok: #0f9f78; --ok-soft: #e7f7f1; --warn: #8a5a00; --warn-soft: #fff4d6;
+  --chip: #eef1f6; --focus: #1f6fe5; --shadow: 0 1px 2px rgba(20, 33, 61, .06), 0 4px 16px rgba(20, 33, 61, .05);
   --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r: 12px; --tb: 64px; --ta: 104px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #12161e; --surface: #1b212c; --ink: #e8ecf3; --muted: #9aa5b8; --line: #2e3746;
-    --card: #1f2632; --rule-red: #e0685f; --rule-blue: #2a3445; --accent: #c9d6ee; --accent-ink: #12161e;
-    --live: #ff6b5e; --ok: #63c48b; --chip: #283142; --focus: #7aa7ec; color-scheme: dark;
+    --bg: #0f141c; --surface: #171e29; --ink: #e8edf5; --muted: #9aa6b8; --line: #2a3342; --line2: #364153;
+    --primary: #4c8dff; --primary-hover: #6a9fff; --primary-ink: #0b1220; --primary-soft: #16263f; --primary-line: #2f5da8;
+    --live: #ff6b6b; --live-soft: #3a1c1f; --ok: #3fcf9f; --ok-soft: #12302a; --warn: #ffd27a; --warn-soft: #3a2e10;
+    --chip: #222b38; --focus: #7aa7ff; --shadow: none; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #12161e; --surface: #1b212c; --ink: #e8ecf3; --muted: #9aa5b8; --line: #2e3746;
-  --card: #1f2632; --rule-red: #e0685f; --rule-blue: #2a3445; --accent: #c9d6ee; --accent-ink: #12161e;
-  --live: #ff6b5e; --ok: #63c48b; --chip: #283142; --focus: #7aa7ec; color-scheme: dark;
+  --bg: #0f141c; --surface: #171e29; --ink: #e8edf5; --muted: #9aa6b8; --line: #2a3342; --line2: #364153;
+  --primary: #4c8dff; --primary-hover: #6a9fff; --primary-ink: #0b1220; --primary-soft: #16263f; --primary-line: #2f5da8;
+  --live: #ff6b6b; --live-soft: #3a1c1f; --ok: #3fcf9f; --ok-soft: #12302a; --warn: #ffd27a; --warn-soft: #3a2e10;
+  --chip: #222b38; --focus: #7aa7ff; --shadow: none; color-scheme: dark;
 }
+html { font-size: 16px; }
+html[data-size="s"] { font-size: 15px; } html[data-size="l"] { font-size: 18px; } html[data-size="xl"] { font-size: 20px; }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body {
-  background: var(--bg); color: var(--ink); font: 17px/1.5 var(--body);
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: calc(12px + env(safe-area-inset-top, 0px)) calc(32px + env(safe-area-inset-bottom, 0px));
-}
+body { background: var(--bg); color: var(--ink); font: 1rem/1.45 var(--body); min-height: 100dvh; }
 [hidden] { display: none !important; }
-main { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-.col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
-@media (min-width: 980px) {
-  main { max-width: 1180px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; column-gap: 28px; }
-  main > header, main > footer { grid-column: 1 / -1; }
-  .col.side-col { position: sticky; top: calc(12px + env(safe-area-inset-top, 0px)); max-height: calc(100vh - 24px); overflow: auto; }
-}
-.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 5px 8px; min-height: 44px; }
-.chips input { border: 0; background: transparent; padding: 4px; flex: 1 1 90px; min-width: 70px; outline: none; }
-.chip { display: inline-flex; align-items: center; gap: 4px; background: var(--chip); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: .9rem; }
-.chip button { border: 0; background: transparent; padding: 0 6px; font-size: 1rem; line-height: 1; color: var(--muted); border-radius: 999px; }
-.snips { display: flex; flex-direction: column; gap: 8px; }
-.snip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
-.col > .field { flex: none; }
-.snip span { flex: 1 1 100%; min-width: 0; overflow-wrap: anywhere; }
-.snip .live { color: var(--muted); font-style: italic; }
-details.cmds { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 8px 12px; }
-details.cmds summary { cursor: pointer; font-weight: 700; }
-.cmdgrid { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 10px 0 4px; font-size: .95rem; }
-.cmdgrid span { color: var(--muted); }
-.search { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 12px; width: 100%; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+svg { flex: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+kbd { font: 700 .78rem/1 var(--body); background: var(--chip); color: var(--muted); border: 1px solid var(--line2); border-bottom-width: 2px; border-radius: 6px; padding: 3px 6px; white-space: nowrap; }
 
-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.brand { font: 800 1.6rem/1 var(--display); letter-spacing: -.01em; margin: 0; }
-.brand span { color: var(--rule-red); }
-.iconbtn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 12px; font-size: .95rem; }
+/* ---------- top bar ---------- */
+.topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 14px; min-height: var(--tb);
+  padding: calc(8px + env(safe-area-inset-top, 0px)) max(clamp(12px, 2vw, 24px), env(safe-area-inset-right, 0px)) 8px max(clamp(12px, 2vw, 24px), env(safe-area-inset-left, 0px));
+  background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; margin: 0; font: 800 1.45rem/1 var(--display); letter-spacing: -.01em; white-space: nowrap; }
+.logo { width: 40px; height: 40px; border-radius: 12px; background: var(--primary); color: #fff; display: grid; place-items: center; }
+.logo svg { width: 22px; height: 22px; }
+.tb-sep { width: 1px; height: 28px; background: var(--line); }
+.deckwrap { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.deckwrap > label { font-weight: 700; color: var(--muted); font-size: .92rem; }
+.deckfield { position: relative; min-width: 0; }
+.deckfield svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); pointer-events: none; }
+#deck { width: clamp(150px, 16vw, 230px); height: 44px; padding: 0 12px 0 38px; border: 1px solid var(--line2); border-radius: 10px; background: var(--surface); font-weight: 700; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.seg button { border: 0; background: transparent; min-height: 38px; padding: 0 18px; border-radius: 9px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--primary); color: var(--primary-ink); }
+.seg.sm button { min-height: 32px; padding: 0 12px; font-size: .88rem; }
+.seg.sm button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.spacer { flex: 1; }
+.saved { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); white-space: nowrap; }
+.saved i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.saved.bad i { background: var(--live); } .saved.bad { color: var(--live); }
+.tbtn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; font-weight: 700; color: var(--ink); }
+.tbtn:hover { background: var(--chip); }
+.tbtn svg { width: 20px; height: 20px; color: var(--muted); }
 
-.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
-.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 160px; }
-.field label, .lbl { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.field input, .field select { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 12px; min-width: 0; }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
-.seg button { border: 0; background: transparent; padding: 9px 16px; }
-.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+/* ---------- layout ---------- */
+.layout { max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); gap: 20px; align-items: start;
+  padding: 16px max(clamp(12px, 2vw, 24px), env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(clamp(12px, 2vw, 24px), env(safe-area-inset-left, 0px)); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.creator { padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (min-width: 1100px) and (min-height: 700px) { .layout:not(.snipmode) .creator { position: sticky; top: calc(var(--tb) + 16px); } }
+.side-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-/* The index card */
-.card { background: var(--card); border-radius: 6px; box-shadow: 0 1px 0 var(--line), 0 8px 24px rgba(20, 30, 50, .08); overflow: hidden; }
-.side { border-top: 3px solid transparent; }
-.side + .side { border-top: 1px dashed var(--line); }
-.side.first { border-top: 3px solid var(--rule-red); }
-.sidehead { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 16px 0; }
-.sidehead .lbl { cursor: pointer; }
-.side.active .sidehead .lbl { color: var(--live); }
-.side.active .sidehead .lbl::before { content: "● "; }
-textarea.ruled {
-  display: block; width: 100%; border: 0; resize: vertical; background-color: transparent;
-  font-size: 1.15rem; line-height: 32px; padding: 4px 16px 12px; min-height: 108px;
-  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule-blue) 31px 32px);
-  background-position: 0 4px; background-attachment: local;
-}
-textarea.ruled:focus { outline: none; }
-.side:focus-within { box-shadow: inset 4px 0 0 var(--focus); }
-.interim { color: var(--muted); font-style: italic; padding: 0 16px 10px; }
+/* tags */
+.tagrow { display: flex; align-items: center; gap: 12px; }
+.tagrow > label { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; flex: none; }
+.tagrow > label svg { width: 20px; height: 20px; color: var(--muted); }
+.chips { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 44px; padding: 4px 6px; border: 1px solid var(--line2); border-radius: 10px; background: var(--surface); min-width: 0; cursor: text; }
+.chips input { border: 0; background: transparent; padding: 4px 6px; flex: 1 1 160px; min-width: 90px; outline: none; height: 34px; }
+.chip { display: inline-flex; align-items: center; gap: 2px; background: var(--chip); border: 1px solid var(--line); border-radius: 8px; padding: 2px 2px 2px 10px; font-size: .92rem; }
+.chip button { border: 0; background: transparent; width: 28px; height: 28px; border-radius: 6px; color: var(--muted); font-size: 1.05rem; line-height: 1; }
+.chip button:hover { background: var(--line); }
+
+/* card sides */
+.side { border: 1.5px solid var(--line); border-radius: var(--r); background: var(--surface); padding: 10px 12px 12px; transition: border-color .15s, background-color .15s, box-shadow .15s; }
+.side.active { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent); }
+.side:not(.active) { opacity: .92; }
+.sidehead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; min-height: 36px; }
+.num { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: .9rem; background: var(--chip); color: var(--muted); }
+.side.active .num { background: var(--primary); color: #fff; }
+.sidename { border: 0; background: transparent; padding: 0; font: 800 1.1rem/1 var(--body); letter-spacing: .04em; color: var(--muted); }
+.side.active .sidename { color: var(--primary); }
+.badge { font-size: .8rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); }
+.side:not(.active) .badge { display: none; }
+.side.listen .badge { background: var(--live-soft); color: var(--live); }
+.side.listen .badge::before { content: "● "; }
+.sidehead .spacer { flex: 1; }
+.mini { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line2); border-radius: 9px; background: var(--surface); font-size: .9rem; font-weight: 700; }
+.mini:hover { border-color: var(--muted); }
+.mini svg { width: 16px; height: 16px; }
+textarea.field { display: block; width: 100%; min-height: var(--ta); resize: vertical; border: 1px solid var(--line2); border-radius: 10px; background: var(--surface); padding: 10px 12px; font-size: 1.08rem; line-height: 1.5; }
+textarea.field::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
+textarea.field:focus { outline: none; border-color: var(--primary); }
+.interim { margin: 6px 2px 0; color: var(--muted); font-style: italic; min-height: 0; }
 .interim:empty { display: none; }
-.mini { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; font-size: .85rem; }
+.interim::before { content: "Hearing: "; font-style: normal; font-weight: 700; font-size: .8rem; color: var(--live); }
+.side.flash { animation: sideflash .7s ease-out; }
+@keyframes sideflash { 0% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 40%, transparent); } 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent); } }
 
-.mic-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.mic {
-  width: 84px; height: 84px; border-radius: 50%; border: 0; flex: none;
-  background: var(--accent); color: var(--accent-ink); display: grid; place-items: center;
-  box-shadow: 0 6px 18px rgba(20, 30, 50, .2);
-}
+/* action bar */
+.actionbar { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(190px, 1.25fr) minmax(150px, .9fr); align-items: center; gap: 14px; padding-top: 4px; }
+.mic { position: relative; width: 84px; height: 84px; border-radius: 50%; border: 0; background: var(--primary); color: #fff; display: grid; place-items: center; box-shadow: 0 6px 18px rgba(31, 111, 229, .3); }
 .mic svg { width: 36px; height: 36px; }
-.mic[aria-pressed="true"] { background: var(--live); color: #fff; animation: pulse 1.4s ease-in-out infinite; }
-@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(200, 55, 45, .45); } 50% { box-shadow: 0 0 0 14px rgba(200, 55, 45, 0); } }
-@media (prefers-reduced-motion: reduce) { .mic[aria-pressed="true"] { animation: none; } }
-.mic-copy { flex: 1 1 220px; min-width: 0; }
-.status { font-weight: 700; margin: 0; }
-.hint { color: var(--muted); font-size: .92rem; margin: 2px 0 0; }
-kbd { font: inherit; font-weight: 700; background: var(--chip); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
+.mic.listening { background: var(--live); box-shadow: 0 6px 18px rgba(229, 72, 77, .35); animation: pulse 1.6s ease-in-out infinite; }
+.mic.paused { background: var(--surface); color: var(--primary); border: 2px solid var(--primary); box-shadow: none; }
+.mic.error { background: var(--surface); color: var(--live); border: 2px solid var(--live); box-shadow: none; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, .4); } 50% { box-shadow: 0 0 0 14px rgba(229, 72, 77, 0); } }
+.micinfo { min-width: 0; }
+.micstate { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 800; font-size: 1.15rem; }
+.micstate i { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.micstate.listening i { background: var(--live); animation: blink 1.2s ease-in-out infinite; }
+.micstate.ready i { background: var(--primary); } .micstate.paused i { background: var(--warn); } .micstate.error i { background: var(--live); }
+@keyframes blink { 50% { opacity: .3; } }
+.micsub { margin: 2px 0 0; color: var(--muted); font-size: .92rem; }
+.micsub b { color: var(--ink); }
+.retry { margin-top: 6px; }
+.bigbtn { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 64px; padding: 0 18px; border-radius: 14px; font-size: 1.35rem; font-weight: 800; border: 1.5px solid var(--line2); background: var(--surface); color: var(--ink); white-space: nowrap; }
+.bigbtn svg { width: 28px; height: 28px; }
+.bigbtn kbd { font-size: .75rem; }
+.flipbtn { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); min-height: 72px; font-size: 1.55rem; box-shadow: 0 6px 18px rgba(31, 111, 229, .28); }
+.flipbtn:hover { background: var(--primary-hover); }
+.flipbtn kbd { background: rgba(255, 255, 255, .18); color: inherit; border-color: rgba(255, 255, 255, .35); }
+.savebtn:hover { border-color: var(--muted); }
+.savebtn.editing { border-color: var(--ok); color: var(--ok); }
+@media (prefers-reduced-motion: reduce) { .mic.listening, .micstate.listening i, .side.flash { animation: none; } * { transition: none !important; } }
 
-.actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 16px; font-weight: 700; }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/* hints + flash */
+.hints { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 12px; border-radius: 10px; background: var(--primary-soft); border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent); font-size: .92rem; }
+.hints svg { width: 18px; height: 18px; color: var(--primary); }
+.say { font-weight: 700; color: var(--primary); background: var(--surface); border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent); border-radius: 999px; padding: 3px 10px; }
+.linkbtn { border: 0; background: transparent; color: var(--primary); font-weight: 700; padding: 6px 4px; text-decoration: underline; text-underline-offset: 3px; }
+.hints .spacer { flex: 1; }
+.speechto { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: .85rem; }
+.flash-msg { position: absolute; left: 50%; transform: translate(-50%, -8px); top: -18px; z-index: 5; pointer-events: none; padding: 8px 16px; border-radius: 999px; background: var(--ink); color: var(--surface); font-weight: 800; font-size: 1rem; box-shadow: 0 6px 20px rgba(0,0,0,.18); opacity: 0; transition: opacity .15s, transform .15s; white-space: nowrap; }
+.flash-msg.show { opacity: 1; transform: translate(-50%, 0); }
+.flash-msg.ok { background: var(--ok); color: #fff; }
+.heard { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; padding: 2px 9px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: .82rem; font-weight: 800; }
+.editbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; background: var(--ok-soft); color: var(--ok); font-weight: 700; font-size: .92rem; }
+.editbar .spacer { flex: 1; }
+
+/* snippets */
+.snippanel { border: 1px dashed var(--line2); border-radius: var(--r); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.snippanel h2 { margin: 0; font-size: 1rem; }
+.sniphead { display: flex; align-items: center; gap: 8px; }
+.snip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
+.snip span { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.snip .live { color: var(--muted); font-style: italic; }
+
+/* ---------- right column ---------- */
+.fold { padding: 0; }
+.fold > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; cursor: pointer; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary h2 { margin: 0; font: 800 1.2rem/1.2 var(--body); }
+.fold > summary svg.hic { width: 24px; height: 24px; color: var(--primary); }
+.fold > summary .chev { width: 18px; height: 18px; color: var(--muted); transition: transform .15s; }
+.fold[open] > summary .chev { transform: rotate(180deg); }
+.desk .fold > summary { cursor: default; } .desk .fold > summary .chev { display: none; }
+.foldbody { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.cnt { display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 7px; border-radius: 999px; background: var(--chip); font-size: .82rem; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+.acstate { display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; color: var(--muted); }
+.acstate i { width: 8px; height: 8px; border-radius: 50%; background: var(--line2); }
+.acstate.ok { color: var(--ok); } .acstate.ok i { background: var(--ok); }
+.acstate.bad { color: var(--live); } .acstate.bad i { background: var(--live); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line2); background: var(--chip); font-weight: 800; color: var(--ink); }
+.btn svg { width: 22px; height: 22px; }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+.btn.primary:hover { background: var(--primary-hover); }
+.btn.wide { width: 100%; }
+.btn.small { min-height: 36px; font-size: .9rem; padding: 0 12px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.toast { min-height: 1.5em; margin: 0; font-weight: 700; color: var(--ok); }
-.toast.err { color: var(--live); }
+.howto { margin: 0; color: var(--muted); font-size: .9rem; }
+.markrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: .9rem; font-weight: 700; }
+.markrow .spacer { flex: 1; }
+.search { position: relative; }
+.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); pointer-events: none; }
+.search input { width: 100%; height: 44px; border: 1px solid var(--line2); border-radius: 10px; padding: 0 12px 0 38px; background: var(--surface); }
+.listbar { display: flex; align-items: center; gap: 8px; font-size: .88rem; color: var(--muted); min-height: 28px; }
+.listbar label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.listbar .spacer { flex: 1; }
+input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); margin: 0; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: start; gap: 10px; padding: 10px 6px 10px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.row.sel { border-color: var(--primary-line); background: var(--primary-soft); }
+.row .ck { display: grid; place-items: center; width: 28px; height: 28px; margin-top: 1px; cursor: pointer; }
+.row .rt { min-width: 0; }
+.row .rf { font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.row .rb { color: var(--muted); font-size: .9rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; margin-top: 2px; }
+.row .rm { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+.row mark { background: color-mix(in srgb, var(--primary) 18%, transparent); color: inherit; border-radius: 4px; padding: 0 3px; }
+.pill { font-size: .78rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; margin-top: 2px; }
+.pill.new { background: var(--warn-soft); color: var(--warn); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.more { width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; font-size: 1.3rem; line-height: 1; color: var(--muted); }
+.more:hover { background: var(--chip); }
+.empty { color: var(--muted); text-align: center; padding: 18px 10px; border: 1px dashed var(--line2); border-radius: 10px; margin: 0; font-size: .92rem; }
+.menu { position: fixed; z-index: 50; min-width: 190px; padding: 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(20, 33, 61, .18); display: flex; flex-direction: column; }
+.menu button { text-align: left; border: 0; background: transparent; min-height: 40px; padding: 0 12px; border-radius: 8px; font-weight: 700; }
+.menu button:hover, .menu button:focus-visible { background: var(--chip); }
+.menu button.danger { color: var(--live); }
+.foot { font-size: .82rem; color: var(--muted); margin: 0 4px; }
 
-section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-section.panel h2 { font: 700 1.2rem/1.2 var(--display); margin: 0; text-wrap: balance; }
-.panelhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-.count { font-variant-numeric: tabular-nums; }
-.howto { color: var(--muted); font-size: .92rem; margin: 0; }
-.howto b { color: var(--ink); }
+/* snackbar */
+.snack { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); z-index: 60; display: flex; align-items: center; gap: 14px; max-width: min(560px, calc(100vw - 24px));
+  padding: 10px 10px 10px 16px; border-radius: 12px; background: var(--ink); color: var(--surface); font-weight: 700; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+.snack.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.snack.err { background: var(--live); color: #fff; }
+.snack button { border: 0; border-radius: 8px; min-height: 36px; padding: 0 12px; background: rgba(255, 255, 255, .16); color: inherit; font-weight: 800; }
+.snack .ok-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: .8rem; flex: none; }
 
-.list { display: flex; flex-direction: column; gap: 10px; }
-.item { border: 1px solid var(--line); border-left: 4px solid var(--rule-red); border-radius: 8px; padding: 10px 12px; background: var(--card); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.item.sent { border-left-color: var(--ok); }
-.item .f { font-weight: 700; overflow-wrap: anywhere; white-space: pre-wrap; }
-.item .b { color: var(--muted); overflow-wrap: anywhere; white-space: pre-wrap; }
-.item mark { background: var(--rule-blue); color: inherit; border-radius: 4px; padding: 0 3px; }
-.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .82rem; color: var(--muted); }
-.pill { background: var(--chip); border-radius: 999px; padding: 1px 9px; }
-.pill.new { color: var(--live); font-weight: 700; }
-.pill.ok { color: var(--ok); font-weight: 700; }
-.itemacts { display: flex; flex-wrap: wrap; gap: 6px; }
-.empty { color: var(--muted); text-align: center; padding: 18px 8px; border: 1px dashed var(--line); border-radius: 10px; margin: 0; }
-
-dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); width: min(520px, calc(100vw - 32px)); padding: 20px; }
+/* dialogs */
+dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); width: min(600px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); padding: 0; }
 dialog::backdrop { background: rgba(10, 14, 22, .5); }
-dialog form { display: flex; flex-direction: column; gap: 14px; }
-.check { display: flex; gap: 10px; align-items: flex-start; }
-.check input { margin-top: 5px; }
-footer { color: var(--muted); font-size: .85rem; text-align: center; }
+.dlg-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 20px 6px; }
+.dlg-h h2 { margin: 0; font: 800 1.3rem var(--body); }
+.dlg-b { padding: 6px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+.dlg-b h3 { margin: 6px 0 0; font-size: 1rem; }
+.dlg-b p, .dlg-b li { color: var(--muted); font-size: .95rem; margin: 0; }
+.dlg-b ol, .dlg-b ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.dlg-b b { color: var(--ink); }
+.cmdgrid { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: center; font-size: .95rem; }
+.cmdgrid span { color: var(--muted); }
+.f { display: flex; flex-direction: column; gap: 5px; }
+.f > label, .f > .lbl { font-size: .82rem; font-weight: 800; color: var(--muted); letter-spacing: .03em; }
+.f input, .f select { height: 44px; border: 1px solid var(--line2); border-radius: 10px; padding: 0 12px; background: var(--surface); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.check { display: flex; gap: 10px; align-items: flex-start; color: var(--ink) !important; }
+.check input { margin-top: 3px; }
+.xbtn { width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; font-size: 1.2rem; color: var(--muted); }
+.xbtn:hover { background: var(--chip); }
+
+/* ---------- compact desktop (short laptop screens) ---------- */
+@media (min-width: 1100px) and (max-height: 820px) {
+  :root { --ta: 84px; --tb: 58px; }
+  .layout { padding-top: 12px; gap: 16px; }
+  .creator { padding: 12px 14px; gap: 10px; }
+  .sidehead { margin-bottom: 6px; }
+  .mic { width: 72px; height: 72px; } .mic svg { width: 30px; height: 30px; }
+  .bigbtn { min-height: 56px; font-size: 1.2rem; } .flipbtn { min-height: 62px; font-size: 1.35rem; }
+  .hints { padding: 6px 10px; }
+}
+
+/* ---------- tablet & phone: one column, sticky dictation bar ---------- */
+@media (max-width: 1099px) {
+  .layout { grid-template-columns: minmax(0, 1fr); max-width: 860px; }
+  .actionbar { position: sticky; bottom: 0; z-index: 10; margin: 0 -18px -14px; padding: 10px 18px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--line); border-radius: 0 0 14px 14px; }
+}
+@media (max-width: 860px) { .saved, .tbtn span { display: none; } }
+@media (max-width: 1099px) {
+  .topbar { flex-wrap: wrap; gap: 8px 10px; }
+  .tb-sep { display: none; }
+  .topbar::after { content: ""; order: 4; flex-basis: 100%; height: 0; }
+  .deckwrap { order: 5; flex: 1 1 0; } .deckwrap > label { display: none; }
+  .deckfield { flex: 1; min-width: 0; } #deck { width: 100%; }
+  .typeseg { order: 6; flex: none; }
+  .badge { white-space: nowrap; }
+}
+@media (max-width: 640px) {
+  .layout { padding-top: 10px; gap: 12px; }
+  .creator { padding: 12px; }
+  .tagrow > label span { display: none; }
+  .actionbar { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "mic flip save" "info info info"; gap: 8px 10px; margin: 0 -12px -12px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .mic { grid-area: mic; width: 64px; height: 64px; } .mic svg { width: 28px; height: 28px; }
+  .micinfo { grid-area: info; } .micstate { font-size: 1rem; } .micsub { font-size: .85rem; }
+  .flipbtn { grid-area: flip; min-height: 64px; font-size: 1.25rem; padding: 0 10px; }
+  .savebtn { grid-area: save; min-height: 64px; font-size: 1.1rem; padding: 0 10px; }
+  .bigbtn kbd { display: none; }
+  [data-clear] span { display: none; } [data-clear] { padding: 0 10px; min-width: 44px; justify-content: center; }
+  .bigbtn { gap: 6px; } .bigbtn svg { width: 22px; height: 22px; } .savebtn { font-size: 1.05rem; } .actionbar { grid-template-columns: auto minmax(0, 1.15fr) minmax(0, 1fr); }
+  .hints .speechto { flex-basis: 100%; }
+  .grid2 { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <h1 class="brand">Say<span>Card</span></h1>
-    <button class="iconbtn" id="openSettings" type="button">Settings</button>
-  </header>
-
-  <div class="col">
-  <div class="toolbar">
-    <div class="seg" role="group" aria-label="Card type">
-      <button type="button" id="typeBasic" aria-pressed="true">Basic</button>
-      <button type="button" id="typeCloze" aria-pressed="false">Cloze</button>
-    </div>
-    <div class="field">
-      <label for="deck">Deck</label>
-      <input id="deck" list="deckList" autocomplete="off" placeholder="SayCard">
-      <datalist id="deckList"></datalist>
-    </div>
+<header class="topbar" id="topbar">
+  <h1 class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>SayCard</h1>
+  <span class="tb-sep" aria-hidden="true"></span>
+  <div class="deckwrap">
+    <label for="deck">Deck</label>
+    <div class="deckfield"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 7.5 12 12l9-4.5z"/><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg>
+      <input id="deck" list="deckList" autocomplete="off" placeholder="SayCard" aria-label="Deck"><datalist id="deckList"></datalist></div>
   </div>
-  <div class="field">
-    <label for="tagInput">Tags</label>
-    <div class="chips" id="tagBox"><input id="tagInput" autocomplete="off" placeholder="Add a tag, then Enter"></div>
+  <div class="seg typeseg" role="group" aria-label="Card type">
+    <button type="button" id="typeBasic" aria-pressed="true">Basic</button>
+    <button type="button" id="typeCloze" aria-pressed="false">Cloze</button>
   </div>
+  <span class="spacer"></span>
+  <span class="saved" id="saved" title="Cards and your current draft are kept in this browser"><i></i><span id="savedT">All changes saved</span></span>
+  <button class="tbtn" id="openSettings" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span></button>
+  <button class="tbtn" id="openHelp" type="button" aria-label="Help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg><span>Help</span></button>
+</header>
 
-  <div class="card" id="composer">
-    <div class="side first active" id="sideFront">
+<main class="layout" id="layout">
+  <!-- ================= card creator ================= -->
+  <section class="panel creator" id="creator" aria-label="Card creator">
+    <div class="tagrow">
+      <label for="tagInput"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.4" fill="currentColor"/></svg><span>Tags</span></label>
+      <div class="chips" id="tagBox"><input id="tagInput" autocomplete="off" placeholder="Add a tag, then press Enter…" aria-label="Add a tag"></div>
+    </div>
+
+    <div class="editbar" id="editBar" hidden><span>✎ Editing a saved card</span><span class="spacer"></span><button type="button" class="mini" id="cancelEdit">Cancel edit</button></div>
+
+    <div class="side active" id="sideFront" data-side="front">
       <div class="sidehead">
-        <span class="lbl" id="lblFront" data-side="front">Front</span>
-        <button class="mini" type="button" id="clozeBtn" hidden>Make blank from selection</button>
+        <span class="num" aria-hidden="true">1</span>
+        <button type="button" class="sidename" id="lblFront" data-pick="front">FRONT</button>
+        <span class="badge" id="badgeFront">Currently editing</span>
+        <span class="spacer"></span>
+        <button class="mini" type="button" id="clozeBtn" hidden title="Select words in the text, then hide them">Make blank</button>
+        <button class="mini" type="button" data-clear="front" aria-label="Clear front"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span>Clear</span></button>
       </div>
-      <textarea class="ruled" id="front" aria-labelledby="lblFront" spellcheck="true"></textarea>
-      <div class="interim" id="interimFront" aria-live="polite"></div>
+      <textarea class="field" id="front" aria-labelledby="lblFront" spellcheck="true" placeholder="Dictate or type the front of your card…"></textarea>
+      <div class="interim" id="interimFront" aria-hidden="true"></div>
     </div>
-    <div class="side" id="sideBack">
-      <div class="sidehead"><span class="lbl" id="lblBack" data-side="back">Back</span></div>
-      <textarea class="ruled" id="back" aria-labelledby="lblBack" spellcheck="true"></textarea>
-      <div class="interim" id="interimBack" aria-live="polite"></div>
-    </div>
-  </div>
 
-  <div class="mic-row">
-    <button class="mic" id="mic" type="button" aria-pressed="false" aria-label="Start dictation">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-    </button>
-    <div class="mic-copy">
-      <p class="status" id="status">Tap the mic and start talking.</p>
-      <p class="hint" id="cmdHint">Speech goes straight onto the card. Say <kbd>flip</kbd> for the other side and <kbd>save card</kbd> when done.</p>
-    </div>
-    <div class="seg" role="group" aria-label="Where speech goes">
-      <button type="button" id="modeCard" aria-pressed="true">Into card</button>
-      <button type="button" id="modeSnip" aria-pressed="false">Snippets</button>
-    </div>
-  </div>
-
-  <section class="panel" id="snipPanel" hidden aria-labelledby="snipH">
-    <div class="panelhead"><h2 id="snipH">Transcript snippets</h2><button class="mini" type="button" id="clearSnips">Clear all</button></div>
-    <p class="howto">Talk freely. Each phrase lands here; tap Front or Back to put it on the card.</p>
-    <div class="snips" id="snips"></div>
-  </section>
-
-  <details class="cmds">
-    <summary>Voice commands</summary>
-    <div class="cmdgrid">
-      <kbd>flip</kbd><span>Switch between front and back</span>
-      <kbd>save card</kbd><span>Save and start the next card</span>
-      <kbd>scratch that</kbd><span>Remove the last phrase</span>
-      <kbd>blank … end blank</kbd><span>Hide those words (makes a cloze card)</span>
-      <kbd>add tag …</kbd><span>Add a one-word tag, e.g. “add tag PPH”</span>
-      <kbd>comma, full stop, question mark, new line</kbd><span>Punctuation (turn off in Settings)</span>
-    </div>
-  </details>
-
-  <div class="actions">
-    <button class="btn primary" type="button" id="save">Save card</button>
-    <button class="btn" type="button" id="clear">Clear</button>
-    <button class="btn" type="button" id="cancelEdit" hidden>Cancel edit</button>
-  </div>
-  <p class="toast" id="toast" role="status" aria-live="polite"></p>
-  </div>
-
-  <div class="col side-col">
-
-  <section class="panel" aria-labelledby="sendH">
-    <div class="panelhead">
-      <h2 id="sendH">Send to Anki</h2>
-      <span class="count" id="newCount"></span>
-    </div>
-    <div class="actions">
-      <button class="btn primary" type="button" id="exportBtn">Download file for Anki</button>
-      <button class="btn" type="button" id="acBtn">Add to Anki on this computer</button>
-    </div>
-    <div class="actions" id="markRow" hidden>
-      <span class="howto" id="markText"></span>
-      <button class="btn" type="button" id="markSent">Mark as sent</button>
-    </div>
-    <p class="howto"><b>Any device:</b> download the file, then in Anki desktop choose File › Import. Cards sync to your phone through AnkiWeb.</p>
-    <p class="howto"><b>Anki desktop open on this computer:</b> “Add to Anki” sends cards directly (needs the free AnkiConnect add-on, code 2055492159).</p>
-    <p class="howto" id="iosHow" hidden><b>iPhone with AnkiMobile:</b> tap “AnkiMobile” on a card to add it there.</p>
-    <p class="howto" id="shareHow" hidden><b>Android:</b> tap “Share” on a card and choose AnkiDroid.</p>
-  </section>
-
-  <section class="panel" aria-labelledby="listH">
-    <div class="panelhead">
-      <h2 id="listH">Your cards</h2>
-      <div class="seg" role="group" aria-label="Show">
-        <button type="button" id="showNew" aria-pressed="true">Not sent</button>
-        <button type="button" id="showAll" aria-pressed="false">All</button>
+    <div class="side" id="sideBack" data-side="back">
+      <div class="sidehead">
+        <span class="num" aria-hidden="true">2</span>
+        <button type="button" class="sidename" id="lblBack" data-pick="back">BACK</button>
+        <span class="badge" id="badgeBack">Currently editing</span>
+        <span class="spacer"></span>
+        <button class="mini" type="button" data-clear="back" aria-label="Clear back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span>Clear</span></button>
       </div>
+      <textarea class="field" id="back" aria-labelledby="lblBack" spellcheck="true" placeholder="Dictate or type the back of your card…"></textarea>
+      <div class="interim" id="interimBack" aria-hidden="true"></div>
     </div>
-    <input class="search" id="search" type="search" placeholder="Search cards" aria-label="Search cards" autocomplete="off">
-    <div class="list" id="list"></div>
-  </section>
-  </div>
 
-  <footer>
-    <p>Cards are saved only on this device until you send them to Anki. Voice is turned into text by your browser’s speech service (Google in Chrome, Apple in Safari), so don’t dictate patient information.</p>
-  </footer>
+    <div class="actionbar" id="actionbar" style="position:relative">
+      <div class="flash-msg" id="flash" aria-hidden="true"></div>
+      <button class="mic" id="mic" type="button" aria-pressed="false" aria-label="Start dictation" title="Start or pause dictation (M)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <div class="micinfo">
+        <p class="micstate ready" id="micState"><i></i><span id="micStateT">Start Dictation</span><span class="heard" id="heard" hidden></span></p>
+        <p class="micsub" id="micSub">Click the mic and speak — it goes into <b>FRONT</b>.</p>
+        <button type="button" class="btn small retry" id="retry" hidden>Retry</button>
+      </div>
+      <button class="bigbtn flipbtn" id="flip" type="button" title="Switch between front and back (F)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>
+        <span id="flipT">Flip Card</span><kbd aria-hidden="true">F</kbd>
+      </button>
+      <button class="bigbtn savebtn" id="save" type="button" title="Save this card and start the next one (S)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg>
+        <span id="saveT">Save Card</span><kbd aria-hidden="true">S</kbd>
+      </button>
+    </div>
+
+    <div class="hints">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+      <span>You can also say:</span><span class="say">“flip card”</span><span class="say">“save card”</span><span class="say">“scratch that”</span>
+      <button type="button" class="linkbtn" data-help="voice">More commands</button>
+      <span class="spacer"></span>
+      <span class="speechto">Speech goes into
+        <span class="seg sm" role="group" aria-label="Where speech goes"><button type="button" id="modeCard" aria-pressed="true">Card</button><button type="button" id="modeSnip" aria-pressed="false">Snippets</button></span></span>
+    </div>
+
+    <section class="snippanel" id="snipPanel" hidden aria-labelledby="snipH">
+      <div class="sniphead"><h2 id="snipH">Snippets</h2><span class="howto">Each phrase lands here — put it on the front or back.</span><span class="spacer" style="flex:1"></span><button class="mini" type="button" id="clearSnips">Clear all</button></div>
+      <div class="list" id="snips"></div>
+    </section>
+  </section>
+
+  <!-- ================= library + Anki ================= -->
+  <div class="side-col">
+    <details class="panel fold" id="sendFold" open>
+      <summary>
+        <svg class="hic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 7.5 12 12l9-4.5z"/><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg>
+        <h2>Send to Anki</h2><span class="cnt" id="newCount">0</span><span class="spacer"></span>
+        <span class="acstate" id="acState" hidden><i></i><span id="acStateT"></span></span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <div class="foldbody">
+        <button class="btn primary wide" type="button" id="exportBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span id="exportT">Download file for Anki</span></button>
+        <button class="btn wide" type="button" id="acBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg><span id="acT">Add to Anki on this computer</span></button>
+        <div class="markrow" id="markRow" hidden><span id="markText"></span><span class="spacer"></span><button class="btn small" type="button" id="markSent">Mark as sent</button></div>
+        <p class="howto">Import the file in Anki desktop (File › Import); cards sync to your phone through AnkiWeb. <button type="button" class="linkbtn" data-help="anki">How to</button></p>
+      </div>
+    </details>
+
+    <details class="panel fold" id="listFold" open>
+      <summary>
+        <h2>Your cards</h2><span class="cnt" id="totalCount">0</span><span class="spacer"></span>
+        <span class="seg sm" role="group" aria-label="Show"><button type="button" id="showNew" aria-pressed="true">Not sent</button><button type="button" id="showAll" aria-pressed="false">All</button></span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <div class="foldbody">
+        <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="search" type="search" placeholder="Search cards…" aria-label="Search cards" autocomplete="off"></div>
+        <div class="listbar" id="listBar" hidden><label><input type="checkbox" id="selAll"> Select all shown</label><span class="spacer"></span><span id="selInfo"></span><button type="button" class="linkbtn" id="selClear" hidden>Clear</button></div>
+        <div class="list" id="list"></div>
+      </div>
+    </details>
+    <p class="foot">Cards stay in this browser until you send them to Anki. Your browser’s speech service (Google in Chrome, Apple in Safari) turns voice into text, so don’t dictate patient information.</p>
+  </div>
 </main>
 
-<dialog id="settings">
-  <form method="dialog" id="settingsForm">
-    <h2 style="margin:0;font:700 1.2rem var(--display)">Settings</h2>
-    <div class="field">
-      <label for="lang">Dictation language</label>
-      <select id="lang">
-        <option value="en-US">English (US)</option>
-        <option value="en-GB">English (UK)</option>
-        <option value="es-US">Español (EE. UU.)</option>
-        <option value="zh-TW">中文（台灣）</option>
-        <option value="zh-CN">中文（中国大陆）</option>
-        <option value="ko-KR">한국어</option>
-        <option value="ja-JP">日本語</option>
-        <option value="hi-IN">हिन्दी</option>
-      </select>
+<div class="snack" id="snack" role="status" aria-live="polite"><span class="ok-dot" id="snackIc" aria-hidden="true">✓</span><span id="snackT"></span><button type="button" id="snackUndo" hidden>Undo</button></div>
+<div class="sr" id="live" aria-live="assertive"></div>
+
+<dialog id="settings" aria-labelledby="setH">
+  <form method="dialog">
+    <div class="dlg-h"><h2 id="setH">Settings</h2><button class="xbtn" value="ok" aria-label="Close">✕</button></div>
+    <div class="dlg-b">
+      <div class="grid2">
+        <div class="f"><label for="lang">Dictation language</label>
+          <select id="lang">
+            <option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="es-US">Español (EE. UU.)</option>
+            <option value="zh-TW">中文（台灣）</option><option value="zh-CN">中文（中国大陆）</option><option value="ko-KR">한국어</option><option value="ja-JP">日本語</option><option value="hi-IN">हिन्दी</option>
+          </select></div>
+        <div class="f"><label for="textSize">Text size</label>
+          <select id="textSize"><option value="s">Small</option><option value="m">Standard</option><option value="l">Large</option><option value="xl">Extra large</option></select></div>
+      </div>
+      <label class="check"><input type="checkbox" id="autoFlip"><span>Keep listening after a card is saved (ready for the next card)</span></label>
+      <label class="check"><input type="checkbox" id="punct"><span>Spoken punctuation: <kbd>comma</kbd> <kbd>full stop</kbd> <kbd>question mark</kbd> <kbd>colon</kbd> <kbd>new line</kbd> (“period” stays a word)</span></label>
+      <h3>Anki</h3>
+      <div class="f"><label for="acUrl">AnkiConnect address</label><input id="acUrl" autocomplete="off"></div>
+      <div class="grid2">
+        <div class="f"><label for="basicModel">Basic note type</label><input id="basicModel" autocomplete="off"></div>
+        <div class="f"><label for="clozeModel">Cloze note type</label><input id="clozeModel" autocomplete="off"></div>
+      </div>
+      <p>Change the note type names only if your Anki uses different ones (for example, another language).</p>
+      <div><button class="btn primary" value="ok">Done</button></div>
     </div>
-    <label class="check"><input type="checkbox" id="punct"><span>Spoken punctuation: say <kbd>comma</kbd>, <kbd>full stop</kbd>, <kbd>question mark</kbd>, <kbd>colon</kbd>, <kbd>new line</kbd>. (“Period” is left as a word.)</span></label>
-    <label class="check"><input type="checkbox" id="autoFlip"><span>After “save card”, keep the microphone on for the next card</span></label>
-    <div class="field">
-      <label for="acUrl">AnkiConnect address</label>
-      <input id="acUrl" autocomplete="off">
+  </form>
+</dialog>
+
+<dialog id="help" aria-labelledby="helpH">
+  <form method="dialog">
+    <div class="dlg-h"><h2 id="helpH">Help</h2><button class="xbtn" value="ok" aria-label="Close">✕</button></div>
+    <div class="dlg-b">
+      <h3>Make a card in four steps</h3>
+      <ol><li>Click the <b>mic</b> and say the question.</li><li>Say <b>“flip card”</b> or click <b>Flip Card</b> (or press <kbd>F</kbd>).</li><li>Say the answer.</li><li>Say <b>“save card”</b> or click <b>Save Card</b> (<kbd>S</kbd>). A blank card is ready for the next one.</li></ol>
+      <h3 id="helpVoice">Voice commands</h3>
+      <div class="cmdgrid">
+        <kbd>flip card</kbd><span>Switch sides (also “switch sides”, or just “flip” on its own)</span>
+        <kbd>go to back</kbd><span>Dictate into the back · <kbd>go to front</kbd> for the front</span>
+        <kbd>save card</kbd><span>Save and start the next card (also “next card”)</span>
+        <kbd>scratch that</kbd><span>Remove the last phrase</span>
+        <kbd>clear card</kbd><span>Empty both sides (you can undo)</span>
+        <kbd>blank … end blank</kbd><span>Hide those words (makes a cloze card)</span>
+        <kbd>add tag …</kbd><span>Add a one-word tag, e.g. “add tag PPH”</span>
+        <kbd>comma · full stop · new line</kbd><span>Punctuation (Settings)</span>
+      </div>
+      <p>Commands are taken out of the text, never typed onto the card. Pause briefly before and after a command for the most reliable results.</p>
+      <h3>Keyboard</h3>
+      <p><kbd>F</kbd> flip · <kbd>S</kbd> save · <kbd>M</kbd> start/pause dictation (when you are not typing in a box)</p>
+      <h3 id="helpAnki">Getting cards into Anki</h3>
+      <ul>
+        <li><b>Any device:</b> click <b>Download file for Anki</b>, then in Anki desktop choose File › Import. Deck, note type and tags come from the file. AnkiWeb sync carries the cards to your phone. Then click <b>Mark as sent</b>.</li>
+        <li><b>Anki open on this computer:</b> install the free AnkiConnect add-on (code <b>2055492159</b>), keep Anki open, click <b>Add to Anki on this computer</b>, and approve the permission dialog in Anki the first time.</li>
+        <li><b>iPhone (AnkiMobile):</b> card menu (⋮) › AnkiMobile.</li>
+        <li><b>Android (AnkiDroid):</b> card menu (⋮) › Share › AnkiDroid.</li>
+      </ul>
+      <p>Tick cards in the list to send only those. A card is marked “Sent” only after Anki confirms it, or after you click Mark as sent.</p>
+      <h3>Privacy</h3>
+      <p>Cards are kept only in this browser. Dictation uses your browser’s speech service (Google in Chrome, Apple in Safari). Don’t dictate patient information. Firefox has no built-in dictation; use your keyboard’s mic key there.</p>
     </div>
-    <div class="toolbar">
-      <div class="field"><label for="basicModel">Basic note type</label><input id="basicModel" autocomplete="off"></div>
-      <div class="field"><label for="clozeModel">Cloze note type</label><input id="clozeModel" autocomplete="off"></div>
-    </div>
-    <div class="actions"><button class="btn primary" value="ok">Done</button></div>
   </form>
 </dialog>
 
 <script>
 (() => {
   'use strict';
-  const $ = s => document.querySelector(s);
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const KEY = 'saycard.';
   const load = (k, d) => { try { const v = localStorage.getItem(KEY + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
-  const save = (k, v) => { try { localStorage.setItem(KEY + k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+  const store = (k, v) => { try { localStorage.setItem(KEY + k, JSON.stringify(v)); return true; } catch (e) { return false; } };
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/.test(navigator.userAgent);
+  const finePointer = matchMedia('(pointer: fine)').matches;
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-  const settings = Object.assign({ lang: 'en-US', punct: true, autoFlip: true, acUrl: 'http://127.0.0.1:8765', basicModel: 'Basic', clozeModel: 'Cloze' }, load('settings', {}));
+  // ---------- state (same storage keys as before, so existing cards and drafts carry over) ----------
+  const settings = Object.assign({ lang: 'en-US', punct: true, autoFlip: true, acUrl: 'http://127.0.0.1:8765', basicModel: 'Basic', clozeModel: 'Cloze', textSize: 'm' }, load('settings', {}));
   let cards = load('cards', []);
-  let draft = Object.assign({ type: 'basic', front: '', back: '', deck: '', tags: '', active: 'front' }, load('draft', {}));
-  let editingId = null, showAll = false, pendingMark = [];
-
-  const el = { front: $('#front'), back: $('#back'), deck: $('#deck') };
-  let tags = [];
+  const draft = Object.assign({ type: 'basic', front: '', back: '', deck: '', tags: '', active: 'front' }, load('draft', {}));
+  let editingId = null, showAll = false, pendingMark = [], tags = [], snips = [];
   let mode = load('mode', 'card');
-  let snips = [];
+  const selected = new Set();
+  const el = { front: $('#front'), back: $('#back'), deck: $('#deck') };
+
+  const sideName = s => draft.type === 'cloze' ? (s === 'front' ? 'TEXT' : 'EXTRA') : (s === 'front' ? 'FRONT' : 'BACK');
+  const other = s => s === 'front' ? 'back' : 'front';
+  const announce = msg => { const l = $('#live'); l.textContent = ''; setTimeout(() => { l.textContent = msg; }, 30); };
+
+  // ---------- persistence ----------
+  function setSaved(ok) { $('#saved').classList.toggle('bad', !ok); $('#savedT').textContent = ok ? 'All changes saved' : 'Not saved — storage full'; }
+  function persist() { const ok = store('cards', cards); setSaved(ok); if (!ok) snack('Could not save on this device. Download your cards soon.', { err: true }); return ok; }
+  function saveDraft() { draft.front = el.front.value; draft.back = el.back.value; draft.deck = el.deck.value; draft.tags = tags.join(' '); setSaved(store('draft', draft)); }
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+
+  // ---------- tags ----------
+  const tagList = s => String(s || '').split(/[,\s]+/).map(x => x.trim()).filter(Boolean);
   function renderTags() {
-    $('#tagBox').querySelectorAll('.chip').forEach(x => x.remove());
+    $$('#tagBox .chip').forEach(x => x.remove());
     const inp = $('#tagInput');
     tags.forEach((t, i) => {
       const c = document.createElement('span'); c.className = 'chip'; c.append(document.createTextNode(t));
@@ -346,215 +532,352 @@ footer { color: var(--muted); font-size: .85rem; text-align: center; }
   }
   function addTag(t) { t = String(t).trim().replace(/\s+/g, '_').replace(/^#/, ''); if (t && !tags.includes(t)) { tags.push(t); renderTags(); saveDraft(); } }
 
-  // ---------- persistence ----------
-  function persist() { if (!save('cards', cards)) toast('Could not save on this device. Download your cards soon.', true); }
-  function saveDraft() { draft.front = el.front.value; draft.back = el.back.value; draft.deck = el.deck.value; draft.tags = tags.join(' '); save('draft', draft); }
-  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
-
-  // ---------- composer ----------
+  // ---------- card type & active side ----------
   function setType(t) {
     draft.type = t;
     $('#typeBasic').setAttribute('aria-pressed', String(t === 'basic'));
     $('#typeCloze').setAttribute('aria-pressed', String(t === 'cloze'));
-    $('#lblFront').textContent = t === 'cloze' ? 'Text' : 'Front';
-    $('#lblBack').textContent = t === 'cloze' ? 'Extra (optional)' : 'Back';
+    $('#lblFront').textContent = sideName('front'); $('#lblBack').textContent = sideName('back') + (t === 'cloze' ? ' (optional)' : '');
+    el.front.placeholder = t === 'cloze' ? 'Dictate the sentence; say “blank … end blank” around the words to hide…' : 'Dictate or type the front of your card…';
+    el.back.placeholder = t === 'cloze' ? 'Optional extra information shown with the answer…' : 'Dictate or type the back of your card…';
     $('#clozeBtn').hidden = t !== 'cloze';
-    saveDraft();
+    saveDraft(); micUI();
   }
   function setActive(side) {
     draft.active = side;
     $('#sideFront').classList.toggle('active', side === 'front');
     $('#sideBack').classList.toggle('active', side === 'back');
-    save('draft', draft);
+    store('draft', draft); micUI(); renderInterim();
+  }
+
+  // ---------- the one flip function (button, voice, keyboard, side labels) ----------
+  // A button/key flip made while a phrase is still being recognised, followed by "flip card" in that same phrase,
+  // is one intention: the spoken flip is then skipped instead of flipping back.
+  let manualFlipInPhrase = false;
+  function flipCard(source, target) {
+    if (source === 'voice' && !target && manualFlipInPhrase) { manualFlipInPhrase = false; return; }
+    if (source !== 'voice' && utterSide != null) manualFlipInPhrase = true;
+    const to = target || other(draft.active);
+    if (to === draft.active) { flash('Already on ' + sideName(to)); return; }
+    setActive(to);
+    const box = to === 'front' ? $('#sideFront') : $('#sideBack');
+    box.classList.remove('flash'); void box.offsetWidth; box.classList.add('flash');
+    flash('Now dictating ' + sideName(to));
+    announce('Now dictating ' + sideName(to));
+    // typing users get the cursor in the new side; while dictating (or on touch screens) focus stays put
+    if (!listening && finePointer && source !== 'voice' && source !== 'label') { el[to].focus(); el[to].setSelectionRange(el[to].value.length, el[to].value.length); }
+  }
+
+  // ---------- inserting dictated text ----------
+  let lastInsert = null;
+  function insertText(text, side) {
+    const ta = el[side]; let t = String(text).replace(/^\s+|\s+$/g, ''); if (!t) return;
+    const focused = document.activeElement === ta;
+    const pos = focused ? ta.selectionEnd : ta.value.length;
+    const prev = ta.value, before = prev.slice(0, pos), after = prev.slice(pos);
+    if (!before.trim() || /[.?!:\n]\s*$/.test(before)) t = t.charAt(0).toUpperCase() + t.slice(1);
+    const sep = !before || /\s$/.test(before) || /^[,.?!:;)]/.test(t) ? '' : ' ';
+    const tail = after && !/^[\s,.?!:;)]/.test(after) ? ' ' : '';
+    ta.value = before + sep + t + tail + after;
+    if (focused) { const c = (before + sep + t).length; ta.setSelectionRange(c, c); }
+    lastInsert = { side, prev };
+    saveDraft();
+  }
+  function undoLast() {
+    if (!lastInsert) { flash('Nothing to remove'); return; }
+    el[lastInsert.side].value = lastInsert.prev; lastInsert = null; saveDraft(); flash('Removed the last phrase');
   }
   function maxCloze(s) { let m = 0; s.replace(/\{\{c(\d+)::/g, (_, n) => { m = Math.max(m, +n); }); return m; }
 
-  let lastInsert = null;
-  function insertText(text) {
-    const ta = el[draft.active];
-    const before = ta.value;
-    let t = text.trim();
-    if (!t) return;
-    const startOfSentence = !before.trim() || /[.?!:\n]\s*$/.test(before);
-    if (startOfSentence) t = t.charAt(0).toUpperCase() + t.slice(1);
-    const sep = !before || /\s$/.test(before) || /^[,.?!:]/.test(t) ? '' : ' ';
-    ta.value = before + sep + t;
-    lastInsert = { side: draft.active, before };
-    saveDraft();
+  // ---------- voice commands: detected and removed before any text reaches the card ----------
+  const SEP = '[\\s,.!?;:]+';
+  const CMD_PHRASES = {
+    flip: ['flip card', 'flip the card', 'flip cards', 'flip sides', 'switch sides', 'switch side', 'switch card', 'other side'],
+    toBack: ['go to back', 'go to the back', 'go back side'],
+    toFront: ['go to front', 'go to the front'],
+    save: ['save card', 'save the card', 'save this card', 'next card'],
+    undo: ['scratch that', 'delete that'],
+    clear: ['clear card', 'clear the card']
+  };
+  const norm = s => String(s).toLowerCase().replace(/[.,!?;:"“”]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const CMD_OF = {}; for (const [act, list] of Object.entries(CMD_PHRASES)) list.forEach(p => { CMD_OF[p] = act; });
+  const ALL = Object.keys(CMD_OF).sort((a, b) => b.length - a.length).map(p => p.split(' ').join(SEP));
+  const SPLIT = new RegExp('\\b(' + ALL.join('|') + ')\\b[.,!?;:]*', 'i');
+  // single words count as a command only when said on their own (so "do a flip" stays text)
+  const ALONE = { 'flip': 'flip', 'flip it': 'flip', 'flip over': 'flip', 'back side': 'toBack', 'front side': 'toFront', 'save': 'save', 'save it': 'save', 'next': 'save', 'undo': 'undo' };
+  const stripCmds = s => s.split(SPLIT).filter((p, i) => i % 2 === 0).join(' ').replace(/\s+/g, ' ').trim();
+
+  function runCommand(act, said, side) {
+    heard(said);
+    if (act === 'flip') flipCard('voice');
+    else if (act === 'toBack') flipCard('voice', 'back');
+    else if (act === 'toFront') flipCard('voice', 'front');
+    else if (act === 'save') saveCard('voice');
+    else if (act === 'undo') undoLast();
+    else if (act === 'clear') clearCard('voice');
+    return draft.active;
   }
+  function processSpeech(raw, startSide) {
+    let side = startSide || draft.active;
+    const alone = ALONE[norm(raw)];
+    if (alone) { runCommand(alone, norm(raw), side); return; }
+    let t = ' ' + String(raw).trim() + ' ';
+    if (settings.punct) {
+      t = t.replace(/\s*\bnew (?:line|paragraph)\b\s*/gi, '\n').replace(/\s+comma\b/gi, ',').replace(/\s+full stop\b/gi, '.')
+           .replace(/\s+question mark\b/gi, '?').replace(/\s+colon\b/gi, ':');
+    }
+    let n = maxCloze(el.front.value);
+    t = t.replace(/\b(?:blank|cloze)\s+(.+?)\s+end\s+(?:blank|cloze)\b/gi, (m, inner) => { if (draft.type !== 'cloze') setType('cloze'); n += 1; return '{{c' + n + '::' + inner.trim() + '}}'; });
+    t = t.replace(/\badd tag\s+([\w-]+)/gi, (m, w) => { addTag(w); heard('add tag ' + w); return ' '; });
+    const parts = t.split(SPLIT);
+    parts.forEach((p, i) => {
+      if (i % 2 === 1) { side = runCommand(CMD_OF[norm(p)] || 'flip', norm(p), side); return; }
+      if (!p || /^[\s.,!?;:]*$/.test(p)) return;
+      if (mode === 'snip') addSnip(p.trim()); else insertText(p, side);
+    });
+  }
+
+  // ---------- save / clear / edit with undo ----------
+  let lastSaveAt = 0;
+  function saveCard(source) {
+    const now = Date.now();
+    if (now - lastSaveAt < 1500) return false;                 // repeated "save card" / double click
+    saveDraft();
+    const front = el.front.value.trim(), back = el.back.value.trim();
+    const fail = msg => { if (!(source === 'voice' && now - lastSaveAt < 5000)) snack(msg, { err: true }); return false; };
+    if (!front) return fail(draft.type === 'cloze' ? 'Add some text first.' : 'Add a front first.');
+    if (draft.type === 'cloze' && !/\{\{c\d+::/.test(front)) return fail('A cloze card needs a blank: select words and click “Make blank”, or say “blank … end blank”.');
+    if (draft.type === 'basic' && !back) return fail('Add a back first — say “flip card”, then the answer.');
+    const deck = el.deck.value.trim() || 'SayCard', tagStr = tags.join(' ');
+    const restore = { front: el.front.value, back: el.back.value, type: draft.type, active: draft.active, editingId };
+    let undo;
+    if (editingId) {
+      const c = cards.find(x => x.id === editingId), old = c ? { ...c } : null;
+      if (c) Object.assign(c, { type: draft.type, front, back, deck, tags: tagStr, sent: false });
+      undo = () => { if (c && old) Object.assign(c, old); };
+      setEditing(null);
+    } else {
+      const c = { id: uid(), type: draft.type, front, back, deck, tags: tagStr, created: Date.now(), sent: false };
+      cards.unshift(c);
+      undo = () => { cards = cards.filter(x => x.id !== c.id); selected.delete(c.id); };
+    }
+    if (!persist()) { // never lose what was dictated
+      if (!restore.editingId) cards.shift(); return false;
+    }
+    lastSaveAt = now;
+    el.front.value = ''; el.back.value = ''; lastInsert = null; utterSide = null;
+    setActive('front'); saveDraft(); render();
+    flash('Saved ✓ — ready for the next card', true);
+    announce('Card saved. Now dictating ' + sideName('front'));
+    snack(restore.editingId ? 'Card updated.' : 'Card saved · ' + unsent().length + ' not sent yet', {
+      undo: () => { undo(); persist(); el.front.value = restore.front; el.back.value = restore.back; setType(restore.type); setActive(restore.active); if (restore.editingId) setEditing(restore.editingId); saveDraft(); render(); flash('Save undone'); }
+    });
+    if (source === 'voice' && !settings.autoFlip) stopListening();
+    if (!listening && finePointer && source !== 'voice') el.front.focus();
+    return true;
+  }
+  function clearCard(source, sideOnly) {
+    const prev = { front: el.front.value, back: el.back.value };
+    if (!prev.front && !prev.back) return;
+    if (sideOnly) el[sideOnly].value = ''; else { el.front.value = ''; el.back.value = ''; setActive('front'); }
+    lastInsert = null; saveDraft();
+    snack(sideOnly ? sideName(sideOnly) + ' cleared' : 'Card cleared', { undo: () => { el.front.value = prev.front; el.back.value = prev.back; saveDraft(); } });
+  }
+  function setEditing(id) {
+    editingId = id;
+    $('#editBar').hidden = !id; $('#saveT').textContent = id ? 'Update Card' : 'Save Card'; $('#save').classList.toggle('editing', !!id);
+  }
+  function editCard(id) {
+    const c = cards.find(x => x.id === id); if (!c) return;
+    setEditing(id); setType(c.type); el.front.value = c.front; el.back.value = c.back; el.deck.value = c.deck; tags = tagList(c.tags); renderTags();
+    setActive('front'); saveDraft();
+    $('#creator').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    if (finePointer) el.front.focus();
+  }
+  function clozeFromSelection() {
+    const ta = el.front, s = ta.selectionStart, e = ta.selectionEnd;
+    if (s === e) { snack('Select the words to hide first.', { err: true }); return; }
+    const n = maxCloze(ta.value) + 1, sel = ta.value.slice(s, e).trim();
+    ta.value = ta.value.slice(0, s) + '{{c' + n + '::' + sel + '}}' + ta.value.slice(e);
+    saveDraft(); ta.focus();
+  }
+
+  // ---------- snippets mode ----------
   function addSnip(t) { snips.push({ id: uid(), t: t.charAt(0).toUpperCase() + t.slice(1) }); renderSnips(); }
   function renderSnips(interim) {
     const box = $('#snips'); box.textContent = '';
-    if (!snips.length && !interim) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'Tap the mic and talk. Phrases will appear here.'; box.append(p); }
+    if (!snips.length && !interim) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'Start dictation — each phrase will appear here.'; box.append(p); }
     snips.forEach(s => {
       const row = document.createElement('div'); row.className = 'snip';
       const tx = document.createElement('span'); tx.textContent = s.t; row.append(tx);
       const mk = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'mini'; b.textContent = label; b.addEventListener('click', fn); row.append(b); };
-      const place = side => () => { const prev = draft.active; setActive(side); insertText(s.t); setActive(prev); snips = snips.filter(x => x !== s); renderSnips(); };
-      mk(draft.type === 'cloze' ? 'Text' : 'Front', place('front'));
-      mk(draft.type === 'cloze' ? 'Extra' : 'Back', place('back'));
+      const place = side => () => { insertText(s.t, side); snips = snips.filter(x => x !== s); renderSnips(); };
+      mk('→ ' + sideName('front'), place('front')); mk('→ ' + sideName('back'), place('back'));
       mk('×', () => { snips = snips.filter(x => x !== s); renderSnips(); });
       box.append(row);
     });
     if (interim) { const row = document.createElement('div'); row.className = 'snip'; const tx = document.createElement('span'); tx.className = 'live'; tx.textContent = interim; row.append(tx); box.append(row); }
   }
   function setMode(m) {
-    mode = m; save('mode', m);
+    mode = m; store('mode', m);
     $('#modeCard').setAttribute('aria-pressed', String(m === 'card')); $('#modeSnip').setAttribute('aria-pressed', String(m === 'snip'));
-    $('#snipPanel').hidden = m !== 'snip';
-    $('#cmdHint').innerHTML = m === 'snip' ? 'Speech becomes snippets below. Tap <kbd>Front</kbd> or <kbd>Back</kbd> on each one to place it.' : 'Speech goes straight onto the card. Say <kbd>flip</kbd> for the other side and <kbd>save card</kbd> when done.';
-    renderSnips();
-  }
-  function undoLast() {
-    if (!lastInsert) { status('Nothing to undo.'); return; }
-    el[lastInsert.side].value = lastInsert.before; lastInsert = null; saveDraft(); status('Removed the last phrase.');
+    $('#snipPanel').hidden = m !== 'snip'; $('#layout').classList.toggle('snipmode', m === 'snip');
+    renderSnips(); micUI();
   }
 
-  function processSpeech(raw) {
-    let t = ' ' + raw.trim() + ' ';
-    if (settings.punct) {
-      t = t.replace(/\s*\bnew (?:line|paragraph)\b\s*/gi, '\n')
-           .replace(/\s+comma\b/gi, ',')
-           .replace(/\s+full stop\b/gi, '.')
-           .replace(/\s+question mark\b/gi, '?')
-           .replace(/\s+colon\b/gi, ':');
-    }
-    let n = maxCloze(el.front.value);
-    t = t.replace(/\b(?:blank|cloze)\s+(.+?)\s+end\s+(?:blank|cloze)\b/gi, (m, inner) => {
-      if (draft.type !== 'cloze') setType('cloze');
-      n += 1; return '{{c' + n + '::' + inner.trim() + '}}';
-    });
-    t = t.replace(/\badd tag\s+([\w-]+)/gi, (m, w) => { addTag(w); status('Added tag ' + w + '.'); return ' '; });
-    const parts = t.split(/\b(flip(?: card)?|save card|next card|scratch that)\b/i);
-    for (const p of parts) {
-      const k = p.trim().toLowerCase();
-      if (k === 'flip' || k === 'flip card') { setActive(draft.active === 'front' ? 'back' : 'front'); status('Now on the ' + (draft.active === 'front' ? (draft.type === 'cloze' ? 'text' : 'front') : (draft.type === 'cloze' ? 'extra' : 'back')) + '.'); }
-      else if (k === 'save card' || k === 'next card') { saveCard(true); }
-      else if (k === 'scratch that') { undoLast(); }
-      else if (p.trim()) { if (mode === 'snip') addSnip(p.trim()); else insertText(p); }
-    }
-  }
-
-  function saveCard(byVoice) {
-    saveDraft();
-    const front = el.front.value.trim(), back = el.back.value.trim();
-    if (!front) { toast(draft.type === 'cloze' ? 'Add some text first.' : 'Add a front first.', true); return false; }
-    if (draft.type === 'cloze' && !/\{\{c\d+::/.test(front)) { toast('A cloze card needs a blank. Select words and tap “Make blank”, or say “blank … end blank”.', true); return false; }
-    if (draft.type === 'basic' && !back) { toast('Add a back first. Say “flip”, then the answer.', true); return false; }
-    const deck = (el.deck.value.trim() || 'SayCard');
-    const tagStr = tags.join(' ');
-    if (editingId) {
-      const c = cards.find(x => x.id === editingId);
-      if (c) Object.assign(c, { type: draft.type, front, back, deck, tags: tagStr, sent: false });
-      editingId = null; $('#cancelEdit').hidden = true; $('#save').textContent = 'Save card';
-      toast('Card updated.');
-    } else {
-      cards.unshift({ id: uid(), type: draft.type, front, back, deck, tags: tagStr, created: Date.now(), sent: false });
-      toast('Saved. ' + unsent().length + ' card' + (unsent().length === 1 ? '' : 's') + ' ready to send.');
-    }
-    persist();
-    el.front.value = ''; el.back.value = ''; lastInsert = null; setActive('front'); saveDraft();
-    render();
-    if (byVoice && !settings.autoFlip) stopListening();
-    return true;
-  }
-
-  function clozeFromSelection() {
-    const ta = el.front, s = ta.selectionStart, e = ta.selectionEnd;
-    if (s === e) { toast('Select the words to hide first.', true); return; }
-    const n = maxCloze(ta.value) + 1;
-    const sel = ta.value.slice(s, e).trim();
-    ta.value = ta.value.slice(0, s) + '{{c' + n + '::' + sel + '}}' + ta.value.slice(e);
-    saveDraft(); ta.focus();
-  }
-
-  // ---------- speech ----------
+  // ---------- speech recognition ----------
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let rec = null, listening = false;
-  function status(msg) { $('#status').textContent = msg; }
-  function showInterim(t) {
+  let rec = null, listening = false, micMode = SR ? 'ready' : 'unsupported', micErr = '';
+  let utterSide = null, interimText = '', lastFinal = { t: '', at: 0 }, restarts = [];
+  function renderInterim() {
+    const t = stripCmds(interimText);
     if (mode === 'snip') { $('#interimFront').textContent = ''; $('#interimBack').textContent = ''; renderSnips(t); return; }
-    $('#interimFront').textContent = draft.active === 'front' ? t : '';
-    $('#interimBack').textContent = draft.active === 'back' ? t : '';
+    const s = utterSide || draft.active;
+    $('#interimFront').textContent = s === 'front' ? t : '';
+    $('#interimBack').textContent = s === 'back' ? t : '';
   }
   function micUI() {
-    const m = $('#mic'); m.setAttribute('aria-pressed', String(listening));
-    m.setAttribute('aria-label', listening ? 'Stop dictation' : 'Start dictation');
-    if (!listening) showInterim('');
+    const m = $('#mic'), st = $('#micState'), sub = $('#micSub'), dest = '<b>' + sideName(draft.active) + '</b>';
+    m.className = 'mic ' + (micMode === 'listening' ? 'listening' : micMode === 'paused' ? 'paused' : micMode === 'error' ? 'error' : '');
+    m.setAttribute('aria-pressed', String(listening));
+    m.setAttribute('aria-label', listening ? 'Pause dictation' : micMode === 'paused' ? 'Resume dictation' : 'Start dictation');
+    st.className = 'micstate ' + micMode;
+    const T = { ready: 'Start Dictation', listening: 'Listening…', paused: 'Dictation paused', error: 'Microphone problem', unsupported: 'Voice not available' }[micMode];
+    $('#micStateT').textContent = T;
+    sub.innerHTML = micMode === 'listening' ? (mode === 'snip' ? 'Speech is going into <b>Snippets</b>.' : 'Speaking into ' + dest + ' · say “flip card” for the other side.')
+      : micMode === 'paused' ? 'Click the mic to resume — speech goes into ' + dest + '.'
+      : micMode === 'error' ? esc(micErr)
+      : micMode === 'unsupported' ? 'This browser has no dictation. Type, or use your keyboard’s mic key. Chrome, Edge and Safari support it.'
+      : 'Click the mic and speak — it goes into ' + dest + '.';
+    $('#retry').hidden = micMode !== 'error';
+    $('#sideFront').classList.toggle('listen', listening && draft.active === 'front');
+    $('#sideBack').classList.toggle('listen', listening && draft.active === 'back');
+    $('#badgeFront').textContent = listening ? 'Dictating here' : 'Currently editing';
+    $('#badgeBack').textContent = listening ? 'Dictating here' : 'Currently editing';
+    $('#mic').disabled = micMode === 'unsupported';
   }
+  function setMic(modeName, err) { micMode = modeName; micErr = err || ''; micUI(); }
   function startListening() {
-    if (!SR) { status('Voice isn’t available in this browser.'); $('#cmdHint').textContent = 'Use your keyboard’s microphone key instead: tap a side of the card, then the mic on your keyboard. Chrome and Safari support the big mic button.'; return; }
-    rec = new SR();
+    if (!SR) { setMic('unsupported'); return; }
+    if (!rec) {
+      rec = new SR();
+      rec.interimResults = true;
+      rec.onresult = e => {
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i], tx = r[0].transcript;
+          if (!r.isFinal) { if (utterSide == null) utterSide = draft.active; interim += tx; continue; }
+          const side = utterSide || draft.active; utterSide = null;
+          // some engines repeat the last final result after a restart: ignore an identical one within a few seconds
+          const k = norm(tx), now = Date.now();
+          if (k && k === lastFinal.t && now - lastFinal.at < 3000) continue;
+          lastFinal = { t: k, at: now };
+          processSpeech(tx, side); manualFlipInPhrase = false;
+        }
+        interimText = interim; if (interim && utterSide == null) utterSide = draft.active;
+        renderInterim();
+      };
+      rec.onerror = e => {
+        if (e.error === 'no-speech' || e.error === 'aborted') return;
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { listening = false; setMic('error', 'The microphone is blocked. Allow it for this site in the browser’s address bar, then click Retry.'); }
+        else if (e.error === 'network') { listening = false; setMic('error', 'Dictation needs an internet connection. You can keep typing.'); }
+        else if (e.error === 'audio-capture') { listening = false; setMic('error', 'No microphone was found. Plug one in or check your sound settings.'); }
+        else { listening = false; setMic('error', 'Dictation stopped (' + e.error + ').'); }
+        interimText = ''; utterSide = null; renderInterim();
+      };
+      rec.onend = () => {
+        // the browser ends sessions on silence; restart quietly, keeping the side and everything typed so far
+        if (!listening) { interimText = ''; utterSide = null; renderInterim(); return; }
+        const now = Date.now(); restarts = restarts.filter(x => now - x < 10000); restarts.push(now);
+        if (restarts.length > 6) { listening = false; setMic('error', 'Dictation keeps stopping. Check the microphone, then click Retry.'); return; }
+        interimText = ''; renderInterim();
+        setTimeout(() => { if (!listening) return; try { rec.lang = settings.lang; rec.start(); } catch (err) { /* already started */ } }, 120);
+      };
+    }
     rec.lang = settings.lang;
-    rec.continuous = !isIOS;      // iOS repeats results in continuous mode; restart instead
-    rec.interimResults = true;
-    rec.onresult = e => {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r.isFinal) processSpeech(r[0].transcript); else interim += r[0].transcript;
-      }
-      showInterim(interim);
-    };
-    rec.onerror = e => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { listening = false; micUI(); status('Microphone is blocked. Allow it for this site in your browser settings.'); }
-      else if (e.error === 'network') { listening = false; micUI(); status('Voice needs an internet connection. You can still type.'); }
-      else if (e.error !== 'no-speech' && e.error !== 'aborted') { status('Voice problem: ' + e.error + '. Tap the mic to try again.'); }
-    };
-    rec.onend = () => {
-      if (listening) { setTimeout(() => { if (listening) { try { rec.start(); } catch (err) {} } }, 150); }
-      else micUI();
-    };
-    try { rec.start(); listening = true; micUI(); status('Listening… speaking into the ' + sideName() + '.'); }
-    catch (err) { status('Could not start the microphone. Tap again.'); }
+    rec.continuous = !isIOS;      // iOS repeats results in continuous mode; it restarts after each phrase instead
+    try { rec.start(); listening = true; restarts = []; setMic('listening'); announce('Listening. Speaking into ' + sideName(draft.active)); }
+    catch (err) { if (/already/i.test(err && err.message)) { listening = true; setMic('listening'); } else setMic('error', 'Could not start the microphone.'); }
   }
-  function stopListening() { listening = false; try { rec && rec.stop(); } catch (e) {} micUI(); status('Stopped. Tap the mic to keep going.'); }
-  function sideName() { return draft.active === 'front' ? (draft.type === 'cloze' ? 'text' : 'front') : (draft.type === 'cloze' ? 'extra' : 'back'); }
+  function stopListening() {
+    listening = false; try { rec && rec.stop(); } catch (e) {}
+    setMic(SR ? 'paused' : 'unsupported'); announce('Dictation paused');
+  }
+  const toggleMic = () => listening ? stopListening() : startListening();
 
-  // ---------- list ----------
-  const unsent = () => cards.filter(c => !c.sent);
-  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const clozeView = s => esc(s).replace(/\{\{c(\d+)::(.*?)(?:::(.*?))?\}\}/g, (m, n, a) => '<mark>' + a + '</mark>');
-  function render() {
-    const n = unsent().length;
-    $('#newCount').textContent = n ? n + ' not sent' : 'All sent';
-    $('#exportBtn').disabled = !n; $('#acBtn').disabled = !n;
-    const list = $('#list'); list.textContent = '';
-    const q = ($('#search').value || '').trim().toLowerCase();
-    const shown = (showAll || q ? cards : unsent()).filter(c => !q || (c.front + ' ' + c.back + ' ' + c.deck + ' ' + c.tags).toLowerCase().includes(q));
-    if (!shown.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = q ? 'No cards match “' + q + '”.' : cards.length ? 'Everything here has been sent to Anki. Choose “All” to see them.' : 'No cards yet. Tap the mic, say the question, say “flip”, say the answer, then say “save card”.'; list.append(p); }
-    shown.forEach(c => {
-      const a = document.createElement('article'); a.className = 'item' + (c.sent ? ' sent' : '');
-      const f = document.createElement('div'); f.className = 'f'; f.innerHTML = c.type === 'cloze' ? clozeView(c.front) : esc(c.front);
-      const b = document.createElement('div'); b.className = 'b'; b.textContent = c.back;
-      const meta = document.createElement('div'); meta.className = 'meta';
-      const st = document.createElement('span'); st.className = 'pill ' + (c.sent ? 'ok' : 'new'); st.textContent = c.sent ? 'Sent' : 'Not sent';
-      meta.append(st, Object.assign(document.createElement('span'), { className: 'pill', textContent: c.type === 'cloze' ? 'Cloze' : 'Basic' }), Object.assign(document.createElement('span'), { textContent: c.deck + (c.tags ? ' · ' + c.tags : '') }));
-      const acts = document.createElement('div'); acts.className = 'itemacts';
-      const mk = (label, fn) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'mini'; x.textContent = label; x.addEventListener('click', fn); acts.append(x); return x; };
-      mk('Edit', () => editCard(c.id));
-      if (isIOS) mk('AnkiMobile', () => { location.href = ankiMobileUrl(c); c.sent = true; persist(); render(); });
-      if (navigator.share && !isIOS) mk('Share', () => shareCard(c));
-      if (c.sent) mk('Mark not sent', () => { c.sent = false; persist(); render(); });
-      const del = mk('Delete', () => {
-        if (del.dataset.armed) { cards = cards.filter(x => x.id !== c.id); persist(); render(); toast('Card deleted.'); }
-        else { del.dataset.armed = '1'; del.textContent = 'Tap again to delete'; setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = 'Delete'; } }, 3000); }
-      });
-      a.append(f); if (c.back) a.append(b); a.append(meta, acts); list.append(a);
-    });
-    const decks = [...new Set(cards.map(c => c.deck))];
-    $('#deckList').innerHTML = decks.map(d => '<option value="' + esc(d).replace(/"/g, '&quot;') + '">').join('');
+  // ---------- feedback ----------
+  let flashT = null, heardT = null, snackT = null, snackUndo = null;
+  function flash(msg, ok) { const f = $('#flash'); f.textContent = msg; f.classList.toggle('ok', !!ok); f.classList.add('show'); clearTimeout(flashT); flashT = setTimeout(() => f.classList.remove('show'), 1400); }
+  function heard(cmd) { const h = $('#heard'); h.textContent = '✓ “' + cmd + '”'; h.hidden = false; clearTimeout(heardT); heardT = setTimeout(() => { h.hidden = true; }, 2200); }
+  function snack(msg, opt = {}) {
+    const s = $('#snack'); $('#snackT').textContent = msg; s.classList.toggle('err', !!opt.err); $('#snackIc').hidden = !!opt.err;
+    snackUndo = opt.undo || null; $('#snackUndo').hidden = !snackUndo;
+    s.classList.add('show'); clearTimeout(snackT); snackT = setTimeout(() => { s.classList.remove('show'); snackUndo = null; }, opt.undo ? 7000 : opt.err ? 6000 : 3500);
   }
-  function editCard(id) {
+  $('#snackUndo').addEventListener('click', () => { const f = snackUndo; snackUndo = null; $('#snack').classList.remove('show'); if (f) f(); });
+
+  // ---------- card list ----------
+  const unsent = () => cards.filter(c => !c.sent);
+  const clozeView = s => esc(s).replace(/\{\{c(\d+)::(.*?)(?:::(.*?))?\}\}/g, (m, n, a) => '<mark>' + a + '</mark>');
+  const shownCards = () => { const q = ($('#search').value || '').trim().toLowerCase(); return (showAll || q ? cards : unsent()).filter(c => !q || (c.front + ' ' + c.back + ' ' + c.deck + ' ' + c.tags).toLowerCase().includes(q)); };
+  const exportList = () => selected.size ? cards.filter(c => selected.has(c.id)) : unsent();
+  function render() {
+    for (const id of [...selected]) if (!cards.some(c => c.id === id)) selected.delete(id);
+    const n = unsent().length, ex = exportList();
+    $('#newCount').textContent = n; $('#newCount').title = n + ' not sent';
+    $('#totalCount').textContent = cards.length;
+    $('#exportT').textContent = selected.size ? 'Download ' + selected.size + ' selected for Anki' : 'Download file for Anki' + (n ? ' (' + n + ')' : '');
+    $('#acT').textContent = selected.size ? 'Add ' + selected.size + ' selected to Anki' : 'Add to Anki on this computer';
+    $('#exportBtn').disabled = !ex.length; $('#acBtn').disabled = !ex.length || acBusy;
+    const list = $('#list'), shown = shownCards(), q = $('#search').value.trim();
+    $('#listBar').hidden = !shown.length;
+    $('#selAll').checked = shown.length > 0 && shown.every(c => selected.has(c.id));
+    $('#selInfo').textContent = selected.size ? selected.size + ' selected' : ''; $('#selClear').hidden = !selected.size;
+    if (!shown.length) {
+      list.innerHTML = '<p class="empty">' + (q ? 'No cards match “' + esc(q) + '”.' : cards.length ? 'Everything has been sent to Anki. Choose “All” to see every card.' : 'No cards yet. Click the mic, say the question, say “flip card”, say the answer, then say “save card”.') + '</p>';
+    } else {
+      list.innerHTML = shown.map(c => '<article class="row' + (selected.has(c.id) ? ' sel' : '') + '" data-id="' + esc(c.id) + '">'
+        + '<label class="ck"><input type="checkbox" data-sel="' + esc(c.id) + '"' + (selected.has(c.id) ? ' checked' : '') + ' aria-label="Select card"></label>'
+        + '<div class="rt"><div class="rf">' + (c.type === 'cloze' ? clozeView(c.front) : esc(c.front)) + '</div>' + (c.back ? '<div class="rb">' + esc(c.back) + '</div>' : '')
+        + '<div class="rm">' + esc(c.deck) + (c.type === 'cloze' ? ' · Cloze' : '') + (c.tags ? ' · ' + esc(tagList(c.tags).join(', ')) : '') + '</div></div>'
+        + '<span class="pill ' + (c.sent ? 'ok">Sent' : 'new">Not sent') + '</span>'
+        + '<button type="button" class="more" data-menu="' + esc(c.id) + '" aria-label="Actions for this card" aria-haspopup="menu">⋮</button></article>').join('');
+    }
+    const decks = [...new Set(cards.map(c => c.deck))];
+    $('#deckList').innerHTML = decks.map(d => '<option value="' + esc(d) + '">').join('');
+  }
+  function openMenu(btn, id) {
+    closeMenu();
     const c = cards.find(x => x.id === id); if (!c) return;
-    editingId = id; setType(c.type); el.front.value = c.front; el.back.value = c.back; el.deck.value = c.deck; tags = tagList(c.tags); renderTags();
-    setActive('front'); saveDraft(); $('#cancelEdit').hidden = false; $('#save').textContent = 'Update card';
-    window.scrollTo({ top: 0, behavior: 'smooth' }); el.front.focus();
+    const m = document.createElement('div'); m.className = 'menu'; m.id = 'rowMenu'; m.setAttribute('role', 'menu');
+    const items = [['edit', 'Edit'], ['dup', 'Duplicate']];
+    if (isIOS) items.push(['mobile', 'Add with AnkiMobile']);
+    if (navigator.share && !isIOS) items.push(['share', 'Share (AnkiDroid)']);
+    items.push(c.sent ? ['unsent', 'Mark as not sent'] : ['sent', 'Mark as sent'], ['del', 'Delete']);
+    m.innerHTML = items.map(([k, l]) => '<button type="button" role="menuitem" data-act="' + k + '"' + (k === 'del' ? ' class="danger"' : '') + '>' + l + '</button>').join('');
+    document.body.append(m);
+    const r = btn.getBoundingClientRect(), w = m.offsetWidth, hh = m.offsetHeight;
+    m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + 'px';
+    m.style.top = (r.bottom + hh + 8 > innerHeight ? Math.max(8, r.top - hh - 4) : r.bottom + 4) + 'px';
+    m.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b) return; closeMenu(); rowAction(b.dataset.act, c); btn.focus(); });
+    m.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenu(); btn.focus(); } if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const bs = $$('button', m), i = bs.indexOf(document.activeElement); bs[(i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length].focus(); } });
+    m.querySelector('button').focus();
+  }
+  function closeMenu() { const m = $('#rowMenu'); if (m) m.remove(); }
+  function rowAction(k, c) {
+    if (k === 'edit') return editCard(c.id);
+    if (k === 'dup') { const d = { ...c, id: uid(), created: Date.now(), sent: false }; cards.splice(cards.indexOf(c), 0, d); persist(); render(); snack('Card duplicated', { undo: () => { cards = cards.filter(x => x.id !== d.id); persist(); render(); } }); return; }
+    if (k === 'mobile') { location.href = ankiMobileUrl(c); c.sent = true; persist(); render(); return; }
+    if (k === 'share') return shareCard(c);
+    if (k === 'sent' || k === 'unsent') { c.sent = k === 'sent'; persist(); render(); return; }
+    if (k === 'del') {
+      const i = cards.indexOf(c); cards.splice(i, 1); selected.delete(c.id); if (editingId === c.id) setEditing(null); persist(); render();
+      snack('Card deleted', { undo: () => { cards.splice(Math.min(i, cards.length), 0, c); persist(); render(); } });
+    }
   }
 
   // ---------- export ----------
   const toHtml = s => esc(s).replace(/\n/g, '<br>');
-  const tagList = s => s.split(/[,\s]+/).map(x => x.trim()).filter(Boolean);
   function buildTsv(list) {
     const q = s => '"' + String(s).replace(/"/g, '""') + '"';
     const lines = ['#separator:tab', '#html:true', '#notetype column:1', '#deck column:2', '#tags column:5'];
@@ -562,109 +885,146 @@ footer { color: var(--muted); font-size: .85rem; text-align: center; }
     return lines.join('\n') + '\n';
   }
   function exportFile() {
-    const list = unsent(); if (!list.length) return;
+    const list = exportList(); if (!list.length) return;
     const blob = new Blob([buildTsv(list)], { type: 'text/plain;charset=utf-8' });
-    const a = document.createElement('a'); const d = new Date();
+    const a = document.createElement('a'), d = new Date();
     a.href = URL.createObjectURL(blob);
     a.download = 'saycard-' + d.toISOString().slice(0, 10) + '-' + list.length + '-cards.txt';
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     pendingMark = list.map(c => c.id);
-    $('#markText').textContent = 'Downloaded ' + list.length + ' card' + (list.length === 1 ? '' : 's') + '. Once they’re in Anki:';
+    $('#markText').textContent = 'Downloaded ' + list.length + ' card' + (list.length === 1 ? '' : 's') + '. Once imported in Anki:';
     $('#markRow').hidden = false;
   }
   async function ac(action, params) {
-    const r = await fetch(settings.acUrl, { method: 'POST', body: JSON.stringify({ action, version: 6, params: params || {} }) });
-    const j = await r.json(); if (j.error) throw new Error(j.error); return j.result;
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const r = await fetch(settings.acUrl, { method: 'POST', body: JSON.stringify({ action, version: 6, params: params || {} }), signal: ctl.signal });
+      const j = await r.json(); if (j.error) throw new Error(j.error); return j.result;
+    } finally { clearTimeout(t); }
   }
+  function acStatus(ok, msg) { const s = $('#acState'); s.hidden = false; s.className = 'acstate ' + (ok ? 'ok' : 'bad'); $('#acStateT').textContent = msg; }
+  let acBusy = false;
   async function sendAnkiConnect() {
-    const list = unsent(); if (!list.length) return;
-    $('#acBtn').disabled = true; toast('Connecting to Anki…');
+    const list = exportList(); if (!list.length || acBusy) return;
+    acBusy = true; render(); $('#acT').textContent = 'Connecting to Anki…';
     try {
       const p = await ac('requestPermission');
-      if (!p || p.permission !== 'granted') throw new Error('Anki didn’t allow this app. Check the dialog in Anki and choose Yes.');
+      if (!p || p.permission !== 'granted') throw new Error('Anki didn’t allow SayCard. Choose Yes in the dialog inside Anki, then try again.');
+      acStatus(true, 'Anki connected');
       for (const d of new Set(list.map(c => c.deck))) await ac('createDeck', { deck: d });
       let added = 0, dupes = 0, failed = 0, lastErr = '';
       for (const c of list) {
         const fields = c.type === 'cloze' ? { 'Text': toHtml(c.front), 'Back Extra': toHtml(c.back) } : { 'Front': toHtml(c.front), 'Back': toHtml(c.back) };
-        try { await ac('addNote', { note: { deckName: c.deck, modelName: c.type === 'cloze' ? settings.clozeModel : settings.basicModel, fields, tags: tagList(c.tags), options: { allowDuplicate: false } } }); c.sent = true; added++; }
-        catch (err) { if (/duplicate/i.test(err.message)) { c.sent = true; dupes++; } else { failed++; lastErr = err.message; } }
+        try { await ac('addNote', { note: { deckName: c.deck, modelName: c.type === 'cloze' ? settings.clozeModel : settings.basicModel, fields, tags: tagList(c.tags), options: { allowDuplicate: false } } }); c.sent = true; added++; selected.delete(c.id); }
+        catch (err) { if (/duplicate/i.test(err.message)) { c.sent = true; dupes++; selected.delete(c.id); } else { failed++; lastErr = err.message; } }
       }
-      persist(); render();
-      toast('Added ' + added + ' to Anki' + (dupes ? ', ' + dupes + ' already there' : '') + (failed ? '. ' + failed + ' failed: ' + lastErr : '.'), !!failed);
+      persist();
+      snack('Added ' + added + ' to Anki' + (dupes ? ', ' + dupes + ' already there' : '') + (failed ? '. ' + failed + ' not added: ' + lastErr : '.'), { err: !!failed });
     } catch (err) {
-      toast(/fetch|network|load failed/i.test(err.message) ? 'Couldn’t reach Anki. Open Anki on this computer with AnkiConnect installed, then try again.' : err.message, true);
-    } finally { $('#acBtn').disabled = !unsent().length; }
+      const offline = err.name === 'AbortError' || /fetch|network|load failed|NetworkError/i.test(err.message);
+      acStatus(false, offline ? 'Anki not found' : 'Not connected');
+      snack(offline ? 'Couldn’t reach Anki. Open Anki desktop with the AnkiConnect add-on, then try again (see Help).' : err.message, { err: true });
+    } finally { acBusy = false; render(); }
   }
   function ankiMobileUrl(c) {
     const P = new URLSearchParams();
-    P.set('type', c.type === 'cloze' ? settings.clozeModel : settings.basicModel);
-    P.set('deck', c.deck);
+    P.set('type', c.type === 'cloze' ? settings.clozeModel : settings.basicModel); P.set('deck', c.deck);
     if (c.type === 'cloze') { P.set('fldText', toHtml(c.front)); if (c.back) P.set('fldBack Extra', toHtml(c.back)); }
     else { P.set('fldFront', toHtml(c.front)); P.set('fldBack', toHtml(c.back)); }
     if (c.tags) P.set('tags', tagList(c.tags).join(' '));
     return 'anki://x-callback-url/addnote?' + P.toString().replace(/\+/g, '%20');
   }
-  async function shareCard(c) {
-    try { await navigator.share({ title: c.deck, text: c.front + (c.back ? '\n\n' + c.back : '') }); c.sent = true; persist(); render(); } catch (e) {}
-  }
+  async function shareCard(c) { try { await navigator.share({ title: c.deck, text: c.front + (c.back ? '\n\n' + c.back : '') }); c.sent = true; persist(); render(); } catch (e) {} }
 
-  // ---------- misc UI ----------
-  let toastTimer = null;
-  function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.classList.toggle('err', !!err); clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.textContent = ''; }, 6000); }
-
-  $('#modeCard').addEventListener('click', () => setMode('card'));
-  $('#modeSnip').addEventListener('click', () => setMode('snip'));
-  $('#clearSnips').addEventListener('click', () => { snips = []; renderSnips(); });
-  $('#search').addEventListener('input', () => render());
-  $('#mic').addEventListener('click', () => listening ? stopListening() : startListening());
+  // ---------- wiring ----------
+  $('#mic').addEventListener('click', toggleMic);
+  $('#retry').addEventListener('click', () => { setMic('ready'); startListening(); });
+  $('#flip').addEventListener('click', () => flipCard('button'));
+  $('#save').addEventListener('click', () => saveCard('button'));
+  $('#cancelEdit').addEventListener('click', () => { setEditing(null); el.front.value = ''; el.back.value = ''; setActive('front'); saveDraft(); });
+  $$('[data-clear]').forEach(b => b.addEventListener('click', () => clearCard('button', b.dataset.clear)));
+  $$('[data-pick]').forEach(b => b.addEventListener('click', () => { const s = b.dataset.pick; if (s !== draft.active) flipCard('label', s); if (finePointer && !listening) el[s].focus(); }));
   $('#typeBasic').addEventListener('click', () => setType('basic'));
   $('#typeCloze').addEventListener('click', () => setType('cloze'));
   $('#clozeBtn').addEventListener('click', clozeFromSelection);
-  $('#save').addEventListener('click', () => saveCard(false));
-  $('#clear').addEventListener('click', () => { el.front.value = ''; el.back.value = ''; lastInsert = null; setActive('front'); saveDraft(); });
-  $('#cancelEdit').addEventListener('click', () => { editingId = null; $('#cancelEdit').hidden = true; $('#save').textContent = 'Save card'; el.front.value = ''; el.back.value = ''; saveDraft(); });
+  $('#modeCard').addEventListener('click', () => setMode('card'));
+  $('#modeSnip').addEventListener('click', () => setMode('snip'));
+  $('#clearSnips').addEventListener('click', () => { snips = []; renderSnips(); });
   ['front', 'back'].forEach(s => {
-    el[s].addEventListener('focus', () => setActive(s));
+    el[s].addEventListener('focus', () => { if (draft.active !== s) setActive(s); });
     el[s].addEventListener('input', saveDraft);
-    $('#lbl' + (s === 'front' ? 'Front' : 'Back')).addEventListener('click', () => { setActive(s); el[s].focus(); });
+    $('#side' + (s === 'front' ? 'Front' : 'Back')).addEventListener('click', e => { if (draft.active !== s && !e.target.closest('button,textarea')) { setActive(s); if (finePointer && !listening) el[s].focus(); } });
   });
   el.deck.addEventListener('input', saveDraft);
   $('#tagInput').addEventListener('keydown', e => {
     const v = e.target.value;
-    if ((e.key === 'Enter' || e.key === ',' || e.key === ' ') && v.trim()) { e.preventDefault(); addTag(v); e.target.value = ''; }
+    if ((e.key === 'Enter' || e.key === ',') && v.trim()) { e.preventDefault(); addTag(v); e.target.value = ''; }
     else if (e.key === 'Backspace' && !v && tags.length) { tags.pop(); renderTags(); saveDraft(); }
   });
   $('#tagInput').addEventListener('blur', e => { if (e.target.value.trim()) { addTag(e.target.value); e.target.value = ''; } });
   $('#tagBox').addEventListener('click', e => { if (e.target === $('#tagBox')) $('#tagInput').focus(); });
   $('#exportBtn').addEventListener('click', exportFile);
   $('#acBtn').addEventListener('click', sendAnkiConnect);
-  $('#markSent').addEventListener('click', () => { cards.forEach(c => { if (pendingMark.includes(c.id)) c.sent = true; }); pendingMark = []; persist(); $('#markRow').hidden = true; render(); toast('Marked as sent.'); });
-  $('#showNew').addEventListener('click', () => { showAll = false; $('#showNew').setAttribute('aria-pressed', 'true'); $('#showAll').setAttribute('aria-pressed', 'false'); render(); });
-  $('#showAll').addEventListener('click', () => { showAll = true; $('#showNew').setAttribute('aria-pressed', 'false'); $('#showAll').setAttribute('aria-pressed', 'true'); render(); });
+  $('#markSent').addEventListener('click', () => { cards.forEach(c => { if (pendingMark.includes(c.id)) { c.sent = true; selected.delete(c.id); } }); pendingMark = []; persist(); $('#markRow').hidden = true; render(); snack('Marked as sent.'); });
+  const setShow = all => { showAll = all; $('#showNew').setAttribute('aria-pressed', String(!all)); $('#showAll').setAttribute('aria-pressed', String(all)); render(); };
+  $('#showNew').addEventListener('click', e => { e.preventDefault(); setShow(false); });
+  $('#showAll').addEventListener('click', e => { e.preventDefault(); setShow(true); });
+  $('#search').addEventListener('input', render);
+  $('#list').addEventListener('change', e => { const cb = e.target.closest('[data-sel]'); if (!cb) return; cb.checked ? selected.add(cb.dataset.sel) : selected.delete(cb.dataset.sel); render(); });
+  $('#list').addEventListener('click', e => { const b = e.target.closest('[data-menu]'); if (b) { e.stopPropagation(); openMenu(b, b.dataset.menu); } });
+  $('#selAll').addEventListener('change', e => { shownCards().forEach(c => e.target.checked ? selected.add(c.id) : selected.delete(c.id)); render(); });
+  $('#selClear').addEventListener('click', () => { selected.clear(); render(); });
+  document.addEventListener('click', e => { if (!e.target.closest('#rowMenu, [data-menu]')) closeMenu(); });
+  addEventListener('resize', closeMenu); addEventListener('scroll', closeMenu, { passive: true });
 
-  // settings
-  const dlg = $('#settings');
-  $('#openSettings').addEventListener('click', () => {
-    $('#lang').value = settings.lang; $('#punct').checked = settings.punct; $('#autoFlip').checked = settings.autoFlip;
-    $('#acUrl').value = settings.acUrl; $('#basicModel').value = settings.basicModel; $('#clozeModel').value = settings.clozeModel;
-    if (dlg.showModal) dlg.showModal();
+  // keyboard: F flip · S save · M mic — only when not typing
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    const t = e.target, typing = t.closest && t.closest('input, textarea, select, [contenteditable="true"]');
+    if (typing || document.querySelector('dialog[open]') || $('#rowMenu')) return;
+    const k = e.key.toLowerCase();
+    if (k === 'f') { e.preventDefault(); flipCard('key'); }
+    else if (k === 's') { e.preventDefault(); saveCard('key'); }
+    else if (k === 'm') { e.preventDefault(); toggleMic(); }
   });
-  dlg.addEventListener('close', () => {
-    settings.lang = $('#lang').value; settings.punct = $('#punct').checked; settings.autoFlip = $('#autoFlip').checked;
+  // Esc in a text box hands the keyboard shortcuts back
+  ['front', 'back'].forEach(s => el[s].addEventListener('keydown', e => { if (e.key === 'Escape') el[s].blur(); }));
+
+  // settings & help
+  const sdlg = $('#settings'), hdlg = $('#help');
+  $('#openSettings').addEventListener('click', () => {
+    $('#lang').value = settings.lang; $('#punct').checked = settings.punct; $('#autoFlip').checked = settings.autoFlip; $('#textSize').value = settings.textSize;
+    $('#acUrl').value = settings.acUrl; $('#basicModel').value = settings.basicModel; $('#clozeModel').value = settings.clozeModel;
+    sdlg.showModal();
+  });
+  $('#textSize').addEventListener('change', e => { document.documentElement.dataset.size = e.target.value; });
+  sdlg.addEventListener('close', () => {
+    const langChanged = settings.lang !== $('#lang').value;
+    settings.lang = $('#lang').value; settings.punct = $('#punct').checked; settings.autoFlip = $('#autoFlip').checked; settings.textSize = $('#textSize').value;
     settings.acUrl = $('#acUrl').value.trim() || 'http://127.0.0.1:8765';
     settings.basicModel = $('#basicModel').value.trim() || 'Basic'; settings.clozeModel = $('#clozeModel').value.trim() || 'Cloze';
-    save('settings', settings);
-    if (listening) { stopListening(); startListening(); }
+    store('settings', settings); document.documentElement.dataset.size = settings.textSize;
+    if (langChanged && listening) { listening = false; try { rec.abort(); } catch (e) {} setTimeout(startListening, 200); }
   });
+  const openHelp = sec => { hdlg.showModal(); const t = sec === 'voice' ? $('#helpVoice') : sec === 'anki' ? $('#helpAnki') : null; if (t) t.scrollIntoView({ block: 'start' }); };
+  $('#openHelp').addEventListener('click', () => openHelp());
+  $$('[data-help]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); openHelp(b.dataset.help); }));
 
-  // init
+  // folds: always open on wide screens; collapsible (and closed to start) on phones
+  const wide = matchMedia('(min-width: 1100px)'), phone = matchMedia('(max-width: 640px)');
+  function folds() { document.body.classList.toggle('desk', wide.matches); $$('.fold').forEach(d => { if (wide.matches) d.open = true; }); }
+  $$('.fold > summary').forEach(s => s.addEventListener('click', e => { if (wide.matches || e.target.closest('button')) e.preventDefault(); }));
+  wide.addEventListener ? wide.addEventListener('change', folds) : wide.addListener(folds);
+  if (phone.matches) $$('.fold').forEach(d => { d.open = false; });
+  const tb = $('#topbar'); const setTb = () => document.documentElement.style.setProperty('--tb', tb.offsetHeight + 'px');
+  if (window.ResizeObserver) new ResizeObserver(setTb).observe(tb); setTb();
+
+  // ---------- init ----------
+  document.documentElement.dataset.size = settings.textSize;
   el.front.value = draft.front || ''; el.back.value = draft.back || ''; el.deck.value = draft.deck || ''; tags = tagList(draft.tags || ''); renderTags();
   setType(draft.type || 'basic'); setActive(draft.active || 'front');
-  $('#iosHow').hidden = !isIOS; $('#shareHow').hidden = !(isAndroid && navigator.share);
-  if (!SR) { $('#cmdHint').textContent = 'Voice isn’t built into this browser. Tap a side of the card and use your keyboard’s microphone key.'; }
-  setMode(mode);
-  render();
-  window.SayCard = { processSpeech, buildTsv: () => buildTsv(unsent()), cards: () => cards };
+  setMode(mode); folds(); micUI(); render();
+  window.SayCard = { processSpeech, flipCard, saveCard, buildTsv: () => buildTsv(unsent()), cards: () => cards, state: () => ({ active: draft.active, listening, micMode, front: el.front.value, back: el.back.value }) };
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

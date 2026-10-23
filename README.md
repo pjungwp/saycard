@@ -21,5 +21,12 @@ If your Anki note types aren't called "Basic" and "Cloze" (e.g. another language
 Uses the browser's built-in speech recognition (Chrome, Edge, Safari). Firefox has none: use the keyboard's mic key instead.
 Speech is processed by the browser vendor's service (Google or Apple). Don't dictate patient information.
 
-Commands: "flip", "save card", "scratch that", "blank … end blank" (cloze), "add tag …",
+Commands: "flip card" / "switch sides" / "go to back" / "go to front" ("flip" on its own), "save card", "scratch that", "clear card", "blank … end blank" (cloze), "add tag …",
 "comma / full stop / question mark / colon / new line" ("period" stays a word).
+Commands are removed from the text before it reaches the card. The Flip Card button, the voice commands and the F key all use one flipCard() function.
+
+Keyboard (when not typing in a box): F flip · S save · M start/pause dictation.
+
+## Branches
+- `preview`: test changes here first (Netlify branch deploy).
+- `main`: the live site; updated only on request.

@@ -1,5 +1,5 @@
 /* SayCard service worker. Change VERSION on every deploy so installed copies update. */
-const VERSION = 'saycard-2026-10-22-1';
+const VERSION = 'saycard-2026-10-23-1';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
