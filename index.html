@@ -14,6 +14,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<link rel="stylesheet" href="skins/skins.css">
+<script src="skins/skins.js"></script><script>AppSkins.init('saycard.skin')</script>
 <style>
 /* SayCard — dictation-first layout.
    Desktop: card creator (left, ~2/3) and card library + Send to Anki (right, ~1/3); the page is the only scroller.
@@ -297,6 +299,46 @@ dialog::backdrop { background: rgba(10, 14, 22, .5); }
   .hints .speechto { flex-basis: 100%; }
   .grid2 { grid-template-columns: 1fr; }
 }
+/* ---------- Look picker (Settings) ---------- */
+.looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr)); gap: 8px; }
+.look { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line2); border-radius: 10px; background: var(--surface); font-weight: 700; font-size: .92rem; text-align: left; }
+.look[aria-pressed="true"] { border: 2px solid var(--primary); background: var(--primary-soft); }
+.look .sw { display: flex; flex: none; }
+.look .sw i { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .2); margin-left: -5px; }
+.look .sw i:first-child { margin-left: 0; }
+
+/* ================= app-skins adapter: map the shared --sk-* tokens onto this app =================
+   Only applies while a skin is chosen (html[data-skin]); it overrides the light/dark themes above.
+   "App default" removes data-skin and the app's own light/dark behaviour returns. */
+:root[data-skin] {
+  --bg: var(--sk-bg); --surface: var(--sk-surface); --ink: var(--sk-ink); --muted: var(--sk-sub); --line: var(--sk-line);
+  --line2: color-mix(in srgb, var(--sk-ink) 22%, var(--sk-line));
+  --primary: var(--sk-accent); --primary-hover: var(--sk-accent-2); --primary-ink: var(--sk-on-accent); --primary-soft: var(--sk-accent-soft); --primary-line: var(--sk-accent);
+  --live: var(--sk-err); --live-soft: var(--sk-err-bg); --ok: var(--sk-ok); --ok-soft: var(--sk-ok-bg); --warn: var(--sk-warn); --warn-soft: var(--sk-warn-bg);
+  --chip: var(--sk-surface-2); --focus: var(--sk-accent); --shadow: var(--sk-shadow); --display: var(--sk-display); --r: var(--sk-radius-sm);
+}
+:root[data-skin] .panel { border-radius: var(--sk-radius); -webkit-backdrop-filter: var(--sk-blur); backdrop-filter: var(--sk-blur); }
+/* top bar: skin header gradient and header ink */
+:root[data-skin] .topbar { background: linear-gradient(120deg, var(--sk-hdr-1), var(--sk-hdr-2)); color: var(--sk-hdr-ink); border-bottom-color: var(--sk-line); -webkit-backdrop-filter: var(--sk-blur); backdrop-filter: var(--sk-blur); }
+:root[data-skin] .topbar :is(.brand, .tbtn, .tbtn svg, .deckwrap > label, .saved) { color: var(--sk-hdr-ink); }
+:root[data-skin] .topbar .tbtn:hover { background: color-mix(in srgb, var(--sk-hdr-ink) 12%, transparent); }
+:root[data-skin] .tb-sep { background: color-mix(in srgb, var(--sk-hdr-ink) 30%, transparent); }
+/* white text on accent */
+:root[data-skin] :is(.logo, .side.active .num, .mic) { color: var(--sk-on-accent); }
+:root[data-skin] :is(.mic.paused, .mic.error) { background: var(--sk-surface); }
+:root[data-skin] :is(.mic, .flipbtn) { box-shadow: var(--sk-shadow); }
+:root[data-skin] .flipbtn kbd { background: color-mix(in srgb, var(--sk-on-accent) 18%, transparent); border-color: color-mix(in srgb, var(--sk-on-accent) 35%, transparent); }
+:root[data-skin] :is(.btn, .bigbtn, .mini, .seg) { border-radius: var(--sk-radius-sm); }
+:root[data-skin] .actionbar { -webkit-backdrop-filter: var(--sk-blur); backdrop-filter: var(--sk-blur); }
+/* dark-on-light chips and toasts use the accent pair (the surface can be see-through) */
+:root[data-skin] :is(.seg.sm button[aria-pressed="true"], .flash-msg, .snack) { background: var(--sk-accent); color: var(--sk-on-accent); }
+:root[data-skin] .flash-msg.ok { background: var(--sk-ok); color: var(--sk-ok-bg); }
+:root[data-skin] .snack.err { background: var(--sk-err); color: var(--sk-err-bg); }
+:root[data-skin] ::placeholder { color: var(--sk-faint); opacity: 1; }
+/* solid sheets: dialogs and menus sit over the app, so no see-through surface */
+:root[data-skin] :is(dialog, .menu) { background: linear-gradient(var(--sk-surface), var(--sk-surface)), var(--sk-bg); color: var(--sk-ink); border-radius: var(--sk-radius); }
+/* the footnote sits on the background art, so give it a panel */
+:root[data-skin] .foot { background: var(--sk-surface); border: 1px solid var(--sk-line); border-radius: var(--sk-radius-sm); padding: 8px 12px; margin: 0; -webkit-backdrop-filter: var(--sk-blur); backdrop-filter: var(--sk-blur); }
 </style>
 </head>
 <body>
@@ -437,6 +479,8 @@ dialog::backdrop { background: rgba(10, 14, 22, .5); }
         <div class="f"><label for="textSize">Text size</label>
           <select id="textSize"><option value="s">Small</option><option value="m">Standard</option><option value="l">Large</option><option value="xl">Extra large</option></select></div>
       </div>
+      <div class="f"><span class="lbl" id="lookLbl">Look</span>
+        <div class="looks" id="looks" role="group" aria-labelledby="lookLbl"></div></div>
       <label class="check"><input type="checkbox" id="autoFlip"><span>Keep listening after a card is saved (ready for the next card)</span></label>
       <label class="check"><input type="checkbox" id="punct"><span>Spoken punctuation: <kbd>comma</kbd> <kbd>full stop</kbd> <kbd>question mark</kbd> <kbd>colon</kbd> <kbd>new line</kbd> (“period” stays a word)</span></label>
       <h3>Anki</h3>
@@ -1006,6 +1050,20 @@ dialog::backdrop { background: rgba(10, 14, 22, .5); }
     store('settings', settings); document.documentElement.dataset.size = settings.textSize;
     if (langChanged && listening) { listening = false; try { rec.abort(); } catch (e) {} setTimeout(startListening, 200); }
   });
+  // Look: shared app-skins pack (skins/), saved on this device; applies at once
+  function renderLooks(focusId) {
+    const box = $('#looks'); if (!box || !window.AppSkins) return;
+    const cur = AppSkins.get(), on = AppSkins.SKINS.some(k => k.id === cur) ? cur : '';
+    const opts = [{ id: '', name: 'App default', swatch: ['#f3f5f9', '#ffffff', '#1f6fe5'] }].concat(AppSkins.SKINS);
+    box.innerHTML = opts.map(k => `<button type="button" class="look" data-look="${k.id}" aria-pressed="${k.id === on}"><span class="sw" aria-hidden="true">${k.swatch.map(c => `<i style="background:${c}"></i>`).join('')}</span>${k.name}</button>`).join('');
+    box.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      AppSkins.set(b.dataset.look || null);
+      if (!b.dataset.look) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#1f6fe5');
+      renderLooks(b.dataset.look);
+    }));
+    if (focusId !== undefined) box.querySelector(`[data-look="${focusId}"]`)?.focus();
+  }
+  renderLooks();
   const openHelp = sec => { hdlg.showModal(); const t = sec === 'voice' ? $('#helpVoice') : sec === 'anki' ? $('#helpAnki') : null; if (t) t.scrollIntoView({ block: 'start' }); };
   $('#openHelp').addEventListener('click', () => openHelp());
   $$('[data-help]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); openHelp(b.dataset.help); }));

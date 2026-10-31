@@ -1,6 +1,6 @@
 /* SayCard service worker. Change VERSION on every deploy so installed copies update. */
-const VERSION = 'saycard-2026-10-23-1';
-const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+const VERSION = 'saycard-2026-10-31-1';
+const CORE = ['./', './index.html', './manifest.webmanifest', './skins/skins.css', './skins/skins.js', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
